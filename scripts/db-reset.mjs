@@ -49,8 +49,8 @@ async function main() {
     database: dbName,
   })
 
-  await runSqlFile(dbConnection, path.join('db', 'schema.sql'))
-  await runSqlFile(dbConnection, path.join('db', 'seed.sql'))
+  await runSqlFile(dbConnection, path.join('db', 'sql', 'schema.sql'))
+  await runSqlFile(dbConnection, path.join('db', 'sql', 'seed.sql'))
   await dbConnection.end()
 
   console.log(`Database \"${dbName}\" has been reset.`)

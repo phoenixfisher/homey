@@ -1,11 +1,11 @@
 # Homey Database Setup
 
-This branch includes a simple local MySQL setup for the project.
+This repository includes a simple local MySQL setup for the project.
 
 ## What Was Added
 
-- `db/schema.sql` contains the SQL that defines the tables
-- `db/seed.sql` contains the SQL that inserts sample test data
+- `db/sql/schema.sql` contains the SQL that defines the tables
+- `db/sql/seed.sql` contains the SQL that inserts sample test data
 - `scripts/db-setup.mjs` is a Node script that connects to MySQL and runs the SQL files for first-time setup
 - `scripts/db-reset.mjs` is a Node script that drops the database, recreates it, and then runs the SQL files again
 - `.env.example` shows the MySQL connection values each teammate needs locally
@@ -15,8 +15,8 @@ The `.sql` files are the database instructions. The `.mjs` files are the automat
 ## One-Time Setup
 
 1. Install MySQL Server on your machine.
-2. Clone the repo and switch to `db_branch` if it is not already merged into main.
-3. Run `npm install`.
+2. Clone the repo and install frontend dependencies with `npm --prefix frontend install`.
+3. Run database setup commands from the repository root.
 4. Copy `.env.example` to `.env`.
 5. Fill in your local MySQL username, password, and database name.
 
@@ -35,7 +35,7 @@ DB_NAME=homey_dev
 Run this the first time:
 
 ```bash
-npm run db:setup
+npm --prefix frontend run db:setup
 ```
 
 This will:
@@ -49,7 +49,7 @@ This will:
 Run this when you want a clean rebuild:
 
 ```bash
-npm run db:reset
+npm --prefix frontend run db:reset
 ```
 
 This will drop the current database, recreate it, and reload the schema and sample data.
@@ -58,13 +58,13 @@ This will drop the current database, recreate it, and reload the schema and samp
 
 1. Pull the latest code from GitHub.
 2. Update `.env` if your local MySQL credentials changed.
-3. Run `npm run db:setup` for normal setup.
-4. Run `npm run db:reset` if you need a clean copy of the database.
+3. Run `npm --prefix frontend run db:setup` for normal setup.
+4. Run `npm --prefix frontend run db:reset` if you need a clean copy of the database.
 
 ## Files To Edit Later
 
-- Update `db/schema.sql` when the table design changes.
-- Update `db/seed.sql` when you want different sample data.
+- Update `db/sql/schema.sql` when the table design changes.
+- Update `db/sql/seed.sql` when you want different sample data.
 
 ## Important Note
 
