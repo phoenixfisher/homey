@@ -6,8 +6,8 @@ This repository includes a simple local MySQL setup for the project.
 
 - `db/sql/schema.sql` contains the SQL that defines the tables
 - `db/sql/seed.sql` contains the SQL that inserts sample test data
-- `scripts/db-setup.mjs` is a Node script that connects to MySQL and runs the SQL files for first-time setup
-- `scripts/db-reset.mjs` is a Node script that drops the database, recreates it, and then runs the SQL files again
+- `frontend/scripts/db-setup.mjs` is a Node script that connects to MySQL and runs the SQL files for first-time setup
+- `frontend/scripts/db-reset.mjs` is a Node script that drops the database, recreates it, and then runs the SQL files again
 - `.env.example` shows the MySQL connection values each teammate needs locally
 
 The `.sql` files are the database instructions. The `.mjs` files are the automation scripts that run those instructions for you.

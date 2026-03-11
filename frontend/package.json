@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "db:setup": "node ../scripts/db-setup.mjs",
-    "db:reset": "node ../scripts/db-reset.mjs"
+    "db:setup": "node scripts/db-setup.mjs",
+    "db:reset": "node scripts/db-reset.mjs"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

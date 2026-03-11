@@ -5,7 +5,7 @@ Homey is organized as a multi-part project:
 - `frontend/`: React + TypeScript (Vite)
 - `backend/`: planned .NET/C# API (not scaffolded yet)
 - `db/`: MySQL schema and seed SQL
-- `scripts/`: local database setup/reset scripts
+- `frontend/scripts/`: local database setup/reset scripts
 
 ## Current Status
 

@@ -5,11 +5,10 @@ import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import mysql from 'mysql2/promise'
 
-dotenv.config()
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const rootDir = path.resolve(__dirname, '..')
+const rootDir = path.resolve(__dirname, '..', '..')
+dotenv.config({ path: path.join(rootDir, '.env') })
 
 function getConfig() {
   const dbName = process.env.DB_NAME
@@ -40,8 +39,7 @@ async function main() {
   const { connection, dbName } = getConfig()
   const adminConnection = await mysql.createConnection(connection)
 
-  await adminConnection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`)
-  await adminConnection.query(`CREATE DATABASE \`${dbName}\`;`)
+  await adminConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`)
   await adminConnection.end()
 
   const dbConnection = await mysql.createConnection({
@@ -53,11 +51,11 @@ async function main() {
   await runSqlFile(dbConnection, path.join('db', 'sql', 'seed.sql'))
   await dbConnection.end()
 
-  console.log(`Database \"${dbName}\" has been reset.`)
+  console.log(`Database \"${dbName}\" is ready.`)
 }
 
 main().catch((error) => {
-  console.error('Database reset failed.')
-  console.error(error.message)
+  console.error('Database setup failed.')
+  console.error(error?.message || error)
   process.exit(1)
 })
