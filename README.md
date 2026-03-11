@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# Homey
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Homey is organized as a multi-part project:
 
-Currently, two official plugins are available:
+- `frontend/`: React + TypeScript (Vite)
+- `backend/`: planned .NET/C# API (not scaffolded yet)
+- `db/`: MySQL schema and seed SQL
+- `scripts/`: local database setup/reset scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Current Status
 
-## React Compiler
+- Frontend is running in `frontend/`.
+- Database schema and seed data are in `db/sql/`.
+- Backend folder exists but still needs .NET project scaffolding.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Prerequisites
 
-## Expanding the ESLint configuration
+- Node.js 20+
+- npm
+- MySQL Server (local)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Quick Start
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Note: Commands use `--prefix frontend` so you can run them from the repo root without changing directories.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Install frontend dependencies:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm --prefix frontend install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Configure environment values:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env
 ```
+
+3. Build the database:
+
+```bash
+npm --prefix frontend run db:setup
+```
+
+4. Start frontend:
+
+```bash
+npm --prefix frontend run dev
+```
+
+## Common Commands
+
+```bash
+npm --prefix frontend run dev # Start frontend dev server
+npm --prefix frontend run build # Rebuild frontend
+npm --prefix frontend run lint # Lint frontend
+npm --prefix frontend run db:setup # Initialize DB (safe if already exists)
+npm --prefix frontend run db:reset # Reset DB (drops and recreates)
+```
+
+## Docs
+
+- Database details: `db/README.md`
+
+## Next Backend Step
+
+Scaffold a .NET Web API in `backend/` and connect it to the same MySQL database.
