@@ -23,27 +23,17 @@ Homey is organized as a multi-part project:
 
 Note: Commands use `--prefix frontend` so you can run them from the repo root without changing directories.
 
-1. Install frontend dependencies:
-
-```bash
-npm --prefix frontend install
-```
-
-2. Configure environment values:
+1. Configure environment values:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Build the database:
+2. Install frontend dependencies, build the database, start frontend:
 
 ```bash
+npm --prefix frontend install
 npm --prefix frontend run db:setup
-```
-
-4. Start frontend:
-
-```bash
 npm --prefix frontend run dev
 ```
 
