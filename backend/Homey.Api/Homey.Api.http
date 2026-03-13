@@ -1,0 +1,6 @@
+@Homey.Api_HostAddress = http://localhost:5185
+
+GET {{Homey.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
