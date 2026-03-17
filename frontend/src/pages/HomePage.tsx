@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -20,12 +20,22 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { AffordabilityMap } from '@/components/AffordabilityMap';
+import {
+  backendLogout,
+  fetchSessionUser,
+  getUserProfile,
+  isLoggedIn as getIsLoggedIn,
+  logout,
+  saveUserProfile,
+  type HomeyUserProfile,
+} from '@/lib/auth';
 
 export function HomePage() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState(1);
   const [noCredit, setNoCredit] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     desiredHomePrice: '',
@@ -55,14 +65,34 @@ export function HomePage() {
     'Other',
   ];
 
+  useEffect(() => {
+    void (async () => {
+      const sessionUser = await fetchSessionUser();
+      setIsLoggedIn(!!sessionUser || getIsLoggedIn());
+    })();
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const profileData = {
+    const profileData: HomeyUserProfile = {
       ...formData,
       creditScore: noCredit ? 'No Credit' : formData.creditScore,
     };
-    localStorage.setItem('homeyProfile', JSON.stringify(profileData));
+    saveUserProfile(profileData);
+    setIsLoggedIn(true);
     void navigate('/dashboard');
+  };
+
+  const handleAuthClick = () => {
+    if (isLoggedIn) {
+      void backendLogout();
+      logout();
+      setIsLoggedIn(false);
+      setShowModal(false);
+      void navigate('/');
+    } else {
+      void navigate('/login');
+    }
   };
 
   const canProceed = () => {
@@ -94,19 +124,25 @@ export function HomePage() {
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</a>
-              <a href="#about" className="text-white/80 hover:text-white transition-colors">About</a>
               <button
+                type="button"
                 onClick={() => setShowModal(true)}
-                className="px-6 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+                className="text-white/80 hover:text-white transition-colors"
               >
                 Get Started
               </button>
+              <button
+                onClick={handleAuthClick}
+                className="px-6 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+              >
+                {isLoggedIn ? 'Sign Out' : 'Login'}
+              </button>
             </nav>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={handleAuthClick}
               className="md:hidden px-4 py-2 bg-white text-[#3e78b2] rounded-xl"
             >
-              Start
+              {isLoggedIn ? 'Sign Out' : 'Login'}
             </button>
           </div>
         </div>
@@ -127,7 +163,13 @@ export function HomePage() {
               Navigate your home buying journey with personalized insights, affordability maps, and milestone tracking.
             </p>
             <motion.button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                if (getIsLoggedIn()) {
+                  void navigate('/dashboard');
+                } else {
+                  setShowModal(true);
+                }
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="px-8 py-4 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all shadow-2xl inline-flex items-center gap-3 text-lg"
@@ -602,6 +644,7 @@ export function HomePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
     </AppLayout>
   );
 }

@@ -1,5 +1,5 @@
-INSERT INTO users (email, password_hash, first_name, last_name, role)
-VALUES ('buyer1@example.com', 'test_hash_123', 'Jane', 'Doe', 'buyer')
+INSERT INTO users (username, email, password_hash, first_name, last_name, role)
+VALUES ('buyer1', 'buyer1@example.com', 'test_hash_123', 'Jane', 'Doe', 'buyer')
 ON DUPLICATE KEY UPDATE
   first_name = VALUES(first_name),
   last_name = VALUES(last_name),
