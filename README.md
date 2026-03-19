@@ -61,6 +61,7 @@ The frontend (`frontend/src/`) uses a glassmorphism design system built on Tailw
 |---|---|---|
 | `/` | Landing page + onboarding modal | `src/pages/HomePage.tsx` |
 | `/dashboard` | Milestone dashboard | `src/pages/DashboardPage.tsx` |
+| `/login` | Login & registration screen | `src/pages/LoginPage.tsx` |
 | `/page1` – `/page4` | Placeholder stubs | `src/pages/PlaceHolder1–4.tsx` |
 
 Add new routes in `src/App.tsx`.
@@ -182,6 +183,54 @@ frontend/src/
     ├── PlaceHolder3.tsx       # /page3
     └── PlaceHolder4.tsx       # /page4
 ```
+
+## Login & User Tracking
+
+Homey now combines a **backend-backed username/password account system** with **browser-side profile and milestone state** for personalization.
+
+### Backend auth (username + password)
+
+- The backend (`backend/Homey.Api`) exposes two minimal endpoints:
+  - `POST /api/auth/register` — creates a new user account in the `users` table (username, email, hashed password, first name, last name).
+  - `POST /api/auth/login` — logs a user in by `usernameOrEmail` + `password` and returns basic user info.
+- Passwords are hashed with BCrypt via the `BCrypt.Net-Next` package.
+- The database schema in `db/sql/schema.sql` was extended so `users` includes a unique `username` column alongside `email` and `password_hash`.
+- CORS is enabled for `http://localhost:5173` so the Vite frontend can call the API directly.
+
+> Note: These endpoints do not yet issue JWTs or cookies; the frontend uses the success of a login/register call as the signal that the user is “logged in,” and you can layer a fuller auth story on top later.
+
+### Frontend login card behavior
+
+On the homepage header and throughout the app, the right-hand button is **Login / Sign Out**:
+
+- When **not logged in**:
+  - The button shows **“Login”** and navigates to the dedicated `/login` screen.
+  - The `/login` screen presents a full-page login/register experience that expands and contracts with the viewport:
+    - **Login view**:
+      - Fields: **Username or Email + Password**.
+      - On submit, calls `POST /api/auth/login` and on success navigates to `/dashboard`.
+      - Includes an inline **“Register here”** link.
+    - **Register view**:
+      - Fields: **First Name, Last Name, Email, Username, Password**.
+      - On submit, calls `POST /api/auth/register` and, on success, returns to the login view with the username/email prefilled.
+- When **logged in**:
+  - The header button shows **“Sign Out”**, which clears local profile/milestone state via `logout()` and returns to a logged-out state.
+
+### Onboarding profile & dashboard
+
+Separately from account auth, the onboarding flow still captures a detailed **Homey profile** on the homepage. That profile is stored in `localStorage` via helper functions in `frontend/src/lib/auth.ts`:
+
+- `isLoggedIn()` — returns `true` if a profile exists in `localStorage`.
+- `getUserProfile()` — returns the typed `HomeyUserProfile` object or `null`.
+- `saveUserProfile(profile)` — saves a `HomeyUserProfile` to `localStorage`.
+- `logout()` — clears both the profile and milestone data from `localStorage`.
+
+Key behaviors:
+
+- Completing the three-step onboarding modal still saves a `HomeyUserProfile` and navigates to `/dashboard`.
+- The dashboard reads this profile and milestones from `localStorage` and redirects back to `/` when no profile is present.
+
+This keeps the **financial profile and milestone experience fast and local**, while the new backend accounts allow users to sign in with a username/password and pave the way for shared, server-side state later.
 
 ## Next Backend Step
 

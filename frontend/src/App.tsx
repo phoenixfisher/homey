@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { HomePage } from '@/pages/HomePage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { LoginPage } from '@/pages/LoginPage';
 import { PlaceHolder1 } from '@/pages/PlaceHolder1';
 import { PlaceHolder2 } from '@/pages/PlaceHolder2';
 import { PlaceHolder3 } from '@/pages/PlaceHolder3';
@@ -9,6 +10,7 @@ import { PlaceHolder4 } from '@/pages/PlaceHolder4';
 const router = createBrowserRouter([
   { path: '/',           Component: HomePage },
   { path: '/dashboard',  Component: DashboardPage },
+  { path: '/login',      Component: LoginPage },
   { path: '/page1',      Component: PlaceHolder1 },
   { path: '/page2',      Component: PlaceHolder2 },
   { path: '/page3',      Component: PlaceHolder3 },

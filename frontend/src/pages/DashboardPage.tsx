@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Home, Award, TrendingUp, DollarSign, LogOut, CheckCircle2, Circle } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { AppLayout } from '@/components/AppLayout';
+import { getUserProfile, logout, type HomeyUserProfile, HOMEY_MILESTONES_KEY } from '@/lib/auth';
 
 interface Milestone {
   id: number;
@@ -73,18 +74,18 @@ const initialMilestones: Milestone[] = [
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Record<string, string> | null>(null);
+  const [profile, setProfile] = useState<HomeyUserProfile | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem('homeyProfile');
+    const savedProfile = getUserProfile();
     if (savedProfile) {
-      setProfile(JSON.parse(savedProfile) as Record<string, string>);
+      setProfile(savedProfile);
     } else {
       void navigate('/');
     }
 
-    const savedMilestones = localStorage.getItem('homeyMilestones');
+    const savedMilestones = localStorage.getItem(HOMEY_MILESTONES_KEY);
     if (savedMilestones) {
       setMilestones(JSON.parse(savedMilestones) as Milestone[]);
     }
@@ -95,12 +96,11 @@ export function DashboardPage() {
       m.id === milestoneId ? { ...m, completed: !m.completed } : m,
     );
     setMilestones(updatedMilestones);
-    localStorage.setItem('homeyMilestones', JSON.stringify(updatedMilestones));
+    localStorage.setItem(HOMEY_MILESTONES_KEY, JSON.stringify(updatedMilestones));
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('homeyProfile');
-    localStorage.removeItem('homeyMilestones');
+    logout();
     void navigate('/');
   };
 
