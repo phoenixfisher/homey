@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Home,
@@ -123,6 +123,7 @@ export function HomePage() {
             </div>
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
+              <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</a>
               <button
                 type="button"

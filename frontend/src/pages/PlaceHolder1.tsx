@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 import { AppLayout } from '@/components/AppLayout';
 
 /**
- * PlaceHolder1 — stub page ready for your feature content.
+ * PlaceHolder2 — stub page ready for your feature content.
  * Already wired into routing and styled with the Homey design system.
  */
 export function PlaceHolder1() {
