@@ -1,8 +1,37 @@
-INSERT INTO users (username, email, password_hash, first_name, last_name, role)
-VALUES ('buyer1', 'buyer1@example.com', 'test_hash_123', 'Jane', 'Doe', 'buyer')
+INSERT INTO users (
+  username,
+  email,
+  password_hash,
+  first_name,
+  last_name,
+  desired_home_price,
+  credit_score,
+  monthly_income,
+  monthly_expenses,
+  total_savings,
+  role
+)
+VALUES (
+  'buyer1',
+  'buyer1@example.com',
+  'test_hash_123',
+  'Jane',
+  'Doe',
+  425000.00,
+  720,
+  6800.00,
+  2400.00,
+  55000.00,
+  'buyer'
+)
 ON DUPLICATE KEY UPDATE
   first_name = VALUES(first_name),
   last_name = VALUES(last_name),
+  desired_home_price = VALUES(desired_home_price),
+  credit_score = VALUES(credit_score),
+  monthly_income = VALUES(monthly_income),
+  monthly_expenses = VALUES(monthly_expenses),
+  total_savings = VALUES(total_savings),
   role = VALUES(role);
 
 INSERT INTO user_progress (user_id, stage, completed, completed_at, notes)
