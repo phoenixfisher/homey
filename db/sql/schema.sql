@@ -5,6 +5,28 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
+  desired_home_price DECIMAL(12,2) NULL,
+  credit_score SMALLINT UNSIGNED NULL,
+  monthly_income DECIMAL(12,2) NULL,
+  monthly_expenses DECIMAL(12,2) NULL,
+  total_savings DECIMAL(12,2) NULL,
+  industry_of_work ENUM(
+    'Technology',
+    'Healthcare',
+    'Finance',
+    'Education',
+    'Manufacturing',
+    'Retail',
+    'Construction',
+    'Real Estate',
+    'Marketing & Advertising',
+    'Legal Services',
+    'Hospitality',
+    'Transportation',
+    'Arts & Entertainment',
+    'Government',
+    'Other'
+  ) NULL,
   role ENUM('buyer', 'agent', 'admin') DEFAULT 'buyer',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
