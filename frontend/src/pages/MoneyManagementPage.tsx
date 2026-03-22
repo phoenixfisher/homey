@@ -4,13 +4,13 @@ import { motion } from 'motion/react';
 import {
   ArrowRight,
   DollarSign,
-  Home,
   PiggyBank,
   Receipt,
   Target,
   TrendingUp,
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
+import { MainNav } from '@/components/MainNav';
 import { getUserProfile, type HomeyUserProfile } from '@/lib/auth';
 
 const STORAGE_KEY = 'homeyMoneyManagementSettings';
@@ -46,15 +46,14 @@ export function MoneyManagementPage() {
   const [settings, setSettings] = useState<MoneySettings>(defaultSettings);
   const [savedSettings, setSavedSettings] = useState<MoneySettings>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState('');
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
   useEffect(() => {
     const savedProfile = getUserProfile();
-    if (!savedProfile) {
-      void navigate('/');
-      return;
+    if (savedProfile) {
+      setProfile(savedProfile);
     }
-
-    setProfile(savedProfile);
+    setIsProfileLoaded(true);
 
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
@@ -110,6 +109,45 @@ export function MoneyManagementPage() {
     };
   }, [profile, settings]);
 
+  if (isProfileLoaded && !profile) {
+    return (
+      <AppLayout>
+        <MainNav
+          active="money-management"
+          rightContent={(
+            <Link
+              to="/"
+              className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+            >
+              Home
+            </Link>
+          )}
+        />
+        <main className="flex-1 p-4 md:p-8 relative">
+          <div className="max-w-3xl mx-auto relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-8 md:p-10 text-center"
+            >
+              <h1 className="text-3xl md:text-4xl text-white mb-4">Set up your profile first</h1>
+              <p className="text-white/75 max-w-2xl mx-auto mb-6">
+                Money Management uses your onboarding details to calculate your monthly cushion,
+                savings progress, and home budget. Start on the Home page to enter that information.
+              </p>
+              <button
+                onClick={() => void navigate('/')}
+                className="px-6 py-3 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all"
+              >
+                Go To Home
+              </button>
+            </motion.div>
+          </div>
+        </main>
+      </AppLayout>
+    );
+  }
+
   if (!profile) return null;
 
   const recommendations = [
@@ -136,33 +174,17 @@ export function MoneyManagementPage() {
 
   return (
     <AppLayout>
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="relative z-20 glass border-b border-white/10"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <Home className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-white">Homey</span>
-            </Link>
-            <nav className="hidden md:flex items-center gap-8">
-              <Link to="/dashboard" className="text-white/80 hover:text-white transition-colors">Dashboard</Link>
-              <Link to="/money-management" className="text-white font-semibold hover:text-white transition-colors">Money Management</Link>
-              <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
-            </nav>
-            <Link
-              to="/dashboard"
-              className="md:hidden px-4 py-2 bg-white text-[#3e78b2] rounded-xl"
-            >
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </motion.header>
+      <MainNav
+        active="money-management"
+        rightContent={(
+          <Link
+            to="/dashboard"
+            className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+          >
+            Dashboard
+          </Link>
+        )}
+      />
 
       <main className="flex-1 p-4 md:p-8 relative">
         <div className="max-w-6xl mx-auto relative z-10 space-y-6">

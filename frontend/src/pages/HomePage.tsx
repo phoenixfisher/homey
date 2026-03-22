@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { AffordabilityMap } from '@/components/AffordabilityMap';
+import { MainNav } from '@/components/MainNav';
 import {
   backendLogout,
   fetchSessionUser,
@@ -106,48 +107,17 @@ export function HomePage() {
 
   return (
     <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
-      {/* Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="relative z-20 glass border-b border-white/10"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <Home className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-white">Homey</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
-              <Link to="/money-management" className="text-white/80 hover:text-white transition-colors">Money Management</Link>
-              <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
-              <a href="#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</a>
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                Get Started
-              </button>
-              <button
-                onClick={handleAuthClick}
-                className="px-6 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
-              >
-                {isLoggedIn ? 'Sign Out' : 'Login'}
-              </button>
-            </nav>
-            <button
-              onClick={handleAuthClick}
-              className="md:hidden px-4 py-2 bg-white text-[#3e78b2] rounded-xl"
-            >
-              {isLoggedIn ? 'Sign Out' : 'Login'}
-            </button>
-          </div>
-        </div>
-      </motion.header>
+      <MainNav
+        active="home"
+        rightContent={(
+          <button
+            onClick={handleAuthClick}
+            className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+          >
+            {isLoggedIn ? 'Sign Out' : 'Login'}
+          </button>
+        )}
+      />
 
       {/* Hero Section */}
       <section id="features" className="relative flex-1 flex items-center justify-center px-4 py-20">
