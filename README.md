@@ -33,7 +33,7 @@ cp .env.example .env
 
 2. Update `.env` with your local MySQL password if needed.
 
-3. Make sure `backend/Homey.Api/appsettings.Development.json` points to the same MySQL database.
+3. Start the backend. It reads the same root `.env` database values as the frontend scripts.
 
 ### Backend
 
@@ -94,12 +94,13 @@ The schema includes `users`, `user_progress`, and `properties`.
 ## Notes
 
 - The frontend currently calls the backend using hard-coded local URLs (`http://localhost:5185`).
-- Backend setup already exists in `backend/Homey.Api`; the main setup step is matching its connection string to your local MySQL database.
+- The backend reads local database settings from the root `.env` file or standard environment variables.
 - The dashboard depends on the onboarding profile in `localStorage`; logging into the backend alone does not fully populate dashboard state.
 
 ## EARS Requirements
 
 - The system shall allow a developer to configure MySQL connection details through a root `.env` file for the database setup and reset scripts.
+- The system shall allow the backend API to read MySQL connection details from the same root `.env` file or equivalent environment variables during local development.
 - When a developer runs `npm --prefix frontend run db:setup`, the system shall create the configured database if it does not exist and apply the schema and seed SQL from `db/sql/`.
 - When a developer runs `npm --prefix frontend run db:reset`, the system shall drop the configured database, recreate it, and reapply the schema and seed SQL.
 - When a developer starts the backend API with a valid MySQL connection string, the system shall expose authentication endpoints for register, login, session lookup, and logout.
