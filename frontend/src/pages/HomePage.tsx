@@ -23,7 +23,6 @@ import { AffordabilityMap } from '@/components/AffordabilityMap';
 import {
   backendLogout,
   fetchSessionUser,
-  getUserProfile,
   isLoggedIn as getIsLoggedIn,
   logout,
   saveUserProfile,
@@ -123,6 +122,7 @@ export function HomePage() {
             </div>
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
+              <Link to="/money-management" className="text-white/80 hover:text-white transition-colors">Money Management</Link>
               <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</a>
               <button
@@ -205,6 +205,13 @@ export function HomePage() {
               <p className="text-white/70">
                 Track your progress toward down payment goals and understand your buying power.
               </p>
+              <Link
+                to="/money-management"
+                className="inline-flex items-center gap-2 text-sm text-white mt-4 hover:text-white/80 transition-colors"
+              >
+                Open money management
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
 
             <div className="glass rounded-2xl p-6 text-left">

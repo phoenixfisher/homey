@@ -156,6 +156,7 @@ export function DashboardPage() {
             </Link>
             <nav className="hidden md:flex items-center gap-8">
               <Link to="/#features" className="text-white/80 hover:text-white transition-colors">Features</Link>
+              <Link to="/money-management" className="text-white/80 hover:text-white transition-colors">Money Management</Link>
               <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
               <Link to="/#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</Link>
               <Link to="/#about" className="text-white/80 hover:text-white transition-colors">About</Link>
@@ -246,6 +247,28 @@ export function DashboardPage() {
               <Award className="w-7 h-7 text-[#bf8b85] mb-3" />
               <div className="text-2xl text-white mb-1">{completedCount}/{milestones.length}</div>
               <div className="text-white/70 text-sm">Completed</div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="glass rounded-3xl p-6 mb-6"
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl text-white mb-2">Money Management</h2>
+                <p className="text-white/70 max-w-2xl">
+                  Review your monthly cushion, down payment progress, and a saved housing budget plan based on your Homey profile.
+                </p>
+              </div>
+              <Link
+                to="/money-management"
+                className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-white text-[#3e78b2] hover:bg-white/90 transition-all"
+              >
+                Open Page
+              </Link>
             </div>
           </motion.div>
 
