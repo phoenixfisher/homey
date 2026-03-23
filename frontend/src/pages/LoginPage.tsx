@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Home, Lock, ArrowRight } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { backendLogout, fetchSessionUser, logout } from '@/lib/auth';
+import { API_URL } from '@/lib/api';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ export function LoginPage() {
     setAuthLoading(true);
     setError('');
     try {
-      const response = await fetch('http://localhost:5185/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -66,7 +67,7 @@ export function LoginPage() {
     setAuthLoading(true);
     setError('');
     try {
-      const response = await fetch('http://localhost:5185/api/auth/register', {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

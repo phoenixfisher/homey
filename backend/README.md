@@ -13,12 +13,19 @@ The backend exposes minimal authentication endpoints backed by the MySQL schema 
 
 ## Configuration
 
-Connection strings and CORS are configured via `appsettings.*.json`:
+For local development, the backend reads database settings from the repo root `.env` file before ASP.NET configuration is built. It also supports standard environment variables.
 
-- `ConnectionStrings:DefaultConnection` — standard MySQL connection string.
-- `Cors:AllowedOrigins` — list of allowed frontend origins (e.g. `http://localhost:5173`).
+Expected `.env` keys:
 
-During development, update `Homey.Api/appsettings.Development.json` to match your local MySQL setup (ideally using the same host/port/db/user/password as your `.env` file used by `db-setup.mjs`).
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+
+If `ConnectionStrings:DefaultConnection` is set through environment variables or other ASP.NET configuration, that value still takes precedence.
+
+`appsettings.Development.example.json` remains a safe reference file for non-secret development settings.
 
 ## Auth Endpoints
 

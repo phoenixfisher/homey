@@ -1,7 +1,10 @@
 using System.Data;
+using System.Globalization;
 using System.Text.Json;
 using BCrypt.Net;
 using MySqlConnector;
+
+LoadRootEnvFile();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +21,13 @@ builder.Services.AddSession(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
+    connectionString = BuildConnectionStringFromDbEnvironment();
+}
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Database connection is not configured. Set ConnectionStrings:DefaultConnection or DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME."
+    );
 }
 
 builder.Services.AddScoped<IDbConnection>(_ => new MySqlConnection(connectionString));
@@ -183,6 +192,73 @@ app.MapPost("/api/auth/logout", (HttpContext httpContext) =>
 });
 
 app.Run();
+
+static string? BuildConnectionStringFromDbEnvironment()
+{
+    var host = Environment.GetEnvironmentVariable("DB_HOST");
+    var user = Environment.GetEnvironmentVariable("DB_USER");
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+
+    if (string.IsNullOrWhiteSpace(host) ||
+        string.IsNullOrWhiteSpace(user) ||
+        string.IsNullOrWhiteSpace(dbName))
+    {
+        return null;
+    }
+
+    var port = Environment.GetEnvironmentVariable("DB_PORT");
+    var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? string.Empty;
+
+    var builder = new MySqlConnectionStringBuilder
+    {
+        Server = host,
+        UserID = user,
+        Password = password,
+        Database = dbName,
+        Port = uint.TryParse(port, CultureInfo.InvariantCulture, out var parsedPort) ? parsedPort : 3306,
+    };
+
+    return builder.ConnectionString;
+}
+
+static void LoadRootEnvFile()
+{
+    var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+    while (current is not null)
+    {
+        var envPath = Path.Combine(current.FullName, ".env");
+        if (File.Exists(envPath))
+        {
+            foreach (var rawLine in File.ReadLines(envPath))
+            {
+                var line = rawLine.Trim();
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+                {
+                    continue;
+                }
+
+                var separatorIndex = line.IndexOf('=');
+                if (separatorIndex <= 0)
+                {
+                    continue;
+                }
+
+                var key = line[..separatorIndex].Trim();
+                if (string.IsNullOrWhiteSpace(key) || Environment.GetEnvironmentVariable(key) is not null)
+                {
+                    continue;
+                }
+
+                var value = line[(separatorIndex + 1)..].Trim().Trim('"');
+                Environment.SetEnvironmentVariable(key, value);
+            }
+
+            return;
+        }
+
+        current = current.Parent;
+    }
+}
 
 public record RegisterRequest(string Username, string Email, string Password, string FirstName, string LastName);
 

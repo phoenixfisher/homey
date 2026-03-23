@@ -1,3 +1,5 @@
+import { API_URL } from '@/lib/api';
+
 export const HOMEY_PROFILE_KEY = 'homeyProfile';
 export const HOMEY_MILESTONES_KEY = 'homeyMilestones';
 
@@ -49,7 +51,7 @@ export function logout(): void {
 
 export async function fetchSessionUser(): Promise<SessionUser | null> {
   try {
-    const response = await fetch('http://localhost:5185/api/auth/me', {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -66,7 +68,7 @@ export async function fetchSessionUser(): Promise<SessionUser | null> {
 
 export async function backendLogout(): Promise<void> {
   try {
-    await fetch('http://localhost:5185/api/auth/logout', {
+    await fetch(`${API_URL}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
