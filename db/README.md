@@ -41,7 +41,7 @@ npm --prefix frontend run db:setup
 This will:
 
 - create the database if it does not already exist
-- create the `users`, `user_progress`, and `properties` tables
+- create the `users`, `user_progress`, and `properties` tables (including `users.last_logged_in_at` for login recency tracking)
 - insert one sample user, progress rows, and one sample property
 
 ## Reset The Database

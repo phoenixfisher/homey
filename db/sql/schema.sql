@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
     'Other'
   ) NULL,
   role ENUM('buyer', 'agent', 'admin') DEFAULT 'buyer',
+  last_logged_in_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
