@@ -9,6 +9,7 @@ INSERT INTO users (
   monthly_income,
   monthly_expenses,
   total_savings,
+  last_logged_in_at,
   role
 )
 VALUES (
@@ -22,6 +23,7 @@ VALUES (
   6800.00,
   2400.00,
   55000.00,
+  NULL,
   'buyer'
 )
 ON DUPLICATE KEY UPDATE
