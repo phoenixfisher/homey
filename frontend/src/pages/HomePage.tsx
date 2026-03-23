@@ -23,7 +23,6 @@ import { AffordabilityMap } from '@/components/AffordabilityMap';
 import {
   backendLogout,
   fetchSessionUser,
-  getUserProfile,
   isLoggedIn as getIsLoggedIn,
   logout,
   saveUserProfile,
@@ -123,6 +122,7 @@ export function HomePage() {
             </div>
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-white/80 hover:text-white transition-colors">Features</a>
+              <Link to="/learning" className="text-white/80 hover:text-white transition-colors">Learning</Link>
               <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</a>
               <button
@@ -332,6 +332,7 @@ export function HomePage() {
               <h4 className="text-white mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
                 <li><a href="#features" className="text-white/70 hover:text-white transition-colors">Features</a></li>
+                <li><Link to="/learning" className="text-white/70 hover:text-white transition-colors">Learning</Link></li>
                 <li><a href="#how-it-works" className="text-white/70 hover:text-white transition-colors">How It Works</a></li>
               </ul>
             </div>

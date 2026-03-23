@@ -95,6 +95,7 @@ export function PreApprovalPage() {
             </Link>
             <nav className="hidden md:flex items-center gap-8">
               <Link to="/#features" className="text-white/80 hover:text-white transition-colors">Features</Link>
+              <Link to="/learning" className="text-white/80 hover:text-white transition-colors">Learning</Link>
               <Link to="/pre-approval" className="text-white font-semibold hover:text-white transition-colors">Pre-Approval</Link>
               <Link to="/#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</Link>
               <Link to="/#about" className="text-white/80 hover:text-white transition-colors">About</Link>
@@ -199,6 +200,7 @@ export function PreApprovalPage() {
               <h4 className="text-white mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/#features" className="text-white/70 hover:text-white transition-colors">Features</Link></li>
+                <li><Link to="/learning" className="text-white/70 hover:text-white transition-colors">Learning</Link></li>
                 <li><Link to="/#how-it-works" className="text-white/70 hover:text-white transition-colors">How It Works</Link></li>
               </ul>
             </div>
