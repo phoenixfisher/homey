@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, ArrowLeft } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
+import { MainNav } from '@/components/MainNav';
 import { LoanApplicationView } from './LoanApplicationView';
 import { GatherDocumentsView } from './GatherDocumentsView';
 import { QualificationView } from './QualificationView';

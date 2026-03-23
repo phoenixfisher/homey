@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { AffordabilityMap } from '@/components/AffordabilityMap';
+import { MainNav } from '@/components/MainNav';
 import {
   backendLogout,
   fetchSessionUser,
@@ -229,6 +230,13 @@ export function HomePage() {
               <p className="text-white/70">
                 Track your progress toward down payment goals and understand your buying power.
               </p>
+              <Link
+                to="/money-management"
+                className="inline-flex items-center gap-2 text-sm text-white mt-4 hover:text-white/80 transition-colors"
+              >
+                Open money management
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
 
             <div className="glass rounded-2xl p-6 text-left">
