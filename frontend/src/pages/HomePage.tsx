@@ -24,9 +24,11 @@ import {
   backendLogout,
   fetchSessionUser,
   isLoggedIn as getIsLoggedIn,
+  getUserProfile,
   logout,
   saveUserProfile,
   type HomeyUserProfile,
+  type SessionUser,
 } from '@/lib/auth';
 
 export function HomePage() {
@@ -35,6 +37,8 @@ export function HomePage() {
   const [step, setStep] = useState(1);
   const [noCredit, setNoCredit] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [localProfile, setLocalProfile] = useState<HomeyUserProfile | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     desiredHomePrice: '',
@@ -66,8 +70,10 @@ export function HomePage() {
 
   useEffect(() => {
     void (async () => {
-      const sessionUser = await fetchSessionUser();
-      setIsLoggedIn(!!sessionUser || getIsLoggedIn());
+      const user = await fetchSessionUser();
+      setSessionUser(user);
+      setLocalProfile(getUserProfile());
+      setIsLoggedIn(!!user || getIsLoggedIn());
     })();
   }, []);
 
@@ -87,6 +93,8 @@ export function HomePage() {
       void backendLogout();
       logout();
       setIsLoggedIn(false);
+      setSessionUser(null);
+      setLocalProfile(null);
       setShowModal(false);
       void navigate('/');
     } else {
@@ -125,25 +133,35 @@ export function HomePage() {
               <Link to="/learning" className="text-white/80 hover:text-white transition-colors">Learning</Link>
               <Link to="/pre-approval" className="text-white/80 hover:text-white transition-colors">Pre-Approval</Link>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</a>
-              <button
-                type="button"
-                onClick={() => setShowModal(true)}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                Get Started
-              </button>
+              {isLoggedIn ? (
+                <Link to="/dashboard" className="text-white/80 hover:text-white transition-colors">
+                  Dashboard
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowModal(true)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  Get Started
+                </button>
+              )}
               <button
                 onClick={handleAuthClick}
                 className="px-6 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
               >
-                {isLoggedIn ? 'Sign Out' : 'Login'}
+                {isLoggedIn
+                  ? `Sign Out${sessionUser ? ` (${sessionUser.firstName})` : localProfile ? ` (${localProfile.name.split(' ')[0]})` : ''}`
+                  : 'Login'}
               </button>
             </nav>
             <button
               onClick={handleAuthClick}
               className="md:hidden px-4 py-2 bg-white text-[#3e78b2] rounded-xl"
             >
-              {isLoggedIn ? 'Sign Out' : 'Login'}
+              {isLoggedIn
+                ? `Sign Out${sessionUser ? ` (${sessionUser.firstName})` : localProfile ? ` (${localProfile.name.split(' ')[0]})` : ''}`
+                : 'Login'}
             </button>
           </div>
         </div>
@@ -158,14 +176,20 @@ export function HomePage() {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-              Your Dream Home<br />Starts Here
+              {sessionUser ? (
+                <>Welcome back,<br />{sessionUser.firstName}</>
+              ) : localProfile ? (
+                <>Welcome back,<br />{localProfile.name.split(' ')[0]}</>
+              ) : (
+                <>Your Dream Home<br />Starts Here</>
+              )}
             </h1>
             <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto">
               Navigate your home buying journey with personalized insights, affordability maps, and milestone tracking.
             </p>
             <motion.button
               onClick={() => {
-                if (getIsLoggedIn()) {
+                if (isLoggedIn) {
                   void navigate('/dashboard');
                 } else {
                   setShowModal(true);
@@ -175,7 +199,7 @@ export function HomePage() {
               whileTap={{ scale: 0.95 }}
               className="px-8 py-4 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all shadow-2xl inline-flex items-center gap-3 text-lg"
             >
-              Begin Your Journey
+              {isLoggedIn ? 'Go to Dashboard' : 'Begin Your Journey'}
               <ArrowRight className="w-5 h-5" />
             </motion.button>
           </motion.div>
