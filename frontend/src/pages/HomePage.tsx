@@ -86,6 +86,7 @@ export function HomePage() {
       creditScore: noCredit ? 'No Credit' : formData.creditScore,
     };
     saveUserProfile(profileData);
+    setLocalProfile(profileData);
     setIsLoggedIn(true);
     void navigate('/dashboard');
   };
@@ -113,6 +114,48 @@ export function HomePage() {
     }
     return formData.industry;
   };
+
+  const emptyForm = {
+    name: '',
+    desiredHomePrice: '',
+    creditScore: '',
+    monthlyIncome: '',
+    yearlyIncome: '',
+    savingsTotal: '',
+    monthlyExpenses: '',
+    industry: '',
+  };
+
+  const openGettingStarted = () => {
+    const saved = getUserProfile();
+    if (saved) {
+      setFormData({
+        name: saved.name,
+        desiredHomePrice: saved.desiredHomePrice,
+        creditScore: saved.creditScore === 'No Credit' ? '' : saved.creditScore,
+        monthlyIncome: saved.monthlyIncome,
+        yearlyIncome: saved.yearlyIncome,
+        savingsTotal: saved.savingsTotal,
+        monthlyExpenses: saved.monthlyExpenses,
+        industry: saved.industry,
+      });
+      setNoCredit(saved.creditScore === 'No Credit');
+    } else if (sessionUser) {
+      setFormData({
+        ...emptyForm,
+        name: `${sessionUser.firstName} ${sessionUser.lastName}`.trim(),
+      });
+      setNoCredit(false);
+    } else {
+      setFormData(emptyForm);
+      setNoCredit(false);
+    }
+    setStep(1);
+    setShowModal(true);
+  };
+
+  /** Same gate as Dashboard / Money Management: saved onboarding profile in local storage. */
+  const canAccessDashboard = !!localProfile;
 
   return (
     <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
@@ -149,19 +192,20 @@ export function HomePage() {
               Navigate your home buying journey with personalized insights, affordability maps, and milestone tracking.
             </p>
             <motion.button
+              type="button"
               onClick={() => {
-                if (isLoggedIn) {
+                if (canAccessDashboard) {
                   void navigate('/dashboard');
                 } else {
-                  setShowModal(true);
+                  openGettingStarted();
                 }
               }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="px-8 py-4 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all shadow-2xl inline-flex items-center gap-3 text-lg"
             >
-              {isLoggedIn ? 'Go to Dashboard' : 'Begin Your Journey'}
-              <ArrowRight className="w-5 h-5" />
+              {canAccessDashboard ? 'Dashboard' : 'Get Started'}
+              <ArrowRight className="w-5 h-5" aria-hidden />
             </motion.button>
           </motion.div>
 
