@@ -2,10 +2,26 @@
 
 Starter ASP.NET Core Web API scaffold created with `dotnet new webapi`.
 
+## Prerequisites
+
+- .NET 10 SDK
+
 ## Structure
 
 - `Homey.slnx`: solution file
 - `Homey.Api/`: API project
+
+## Run The Backend
+
+From the repository root:
+
+```bash
+dotnet restore backend/Homey.slnx
+dotnet build backend/Homey.slnx
+dotnet run --project backend/Homey.Api
+```
+
+The development profile is configured to run on `http://localhost:5185`.
 
 ## Status
 
