@@ -52,6 +52,7 @@ export function ProfilePage() {
     monthlyIncome: '',
     monthlyExpenses: '',
     totalSavings: '',
+    targetZipCode: '',
     industryOfWork: '',
   });
 
@@ -85,6 +86,7 @@ export function ProfilePage() {
           monthlyIncome: loaded.monthlyIncome?.toString() ?? '',
           monthlyExpenses: loaded.monthlyExpenses?.toString() ?? '',
           totalSavings: loaded.totalSavings?.toString() ?? '',
+          targetZipCode: loaded.targetZipCode ?? '',
           industryOfWork: loaded.industryOfWork ?? '',
         });
       } catch (err) {
@@ -124,6 +126,7 @@ export function ProfilePage() {
       monthlyIncome: toNumberOrNull(form.monthlyIncome),
       monthlyExpenses: toNumberOrNull(form.monthlyExpenses),
       totalSavings: toNumberOrNull(form.totalSavings),
+      targetZipCode: form.targetZipCode.trim() || null,
       industryOfWork: form.industryOfWork || null,
     };
 
@@ -289,6 +292,14 @@ export function ProfilePage() {
                       step="100"
                       value={form.totalSavings}
                       onChange={(e) => setForm({ ...form, totalSavings: e.target.value })}
+                      className="w-full px-4 py-3 glass rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/90 mb-2">Target ZIP Code</label>
+                    <input
+                      value={form.targetZipCode}
+                      onChange={(e) => setForm({ ...form, targetZipCode: e.target.value })}
                       className="w-full px-4 py-3 glass rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50"
                     />
                   </div>

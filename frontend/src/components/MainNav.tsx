@@ -3,10 +3,11 @@ import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, Menu, X } from 'lucide-react';
 
-type MainNavSection = 'home' | 'dashboard' | 'money-management' | 'pre-approval' | 'learning';
+type MainNavSection = 'home' | 'dashboard' | 'money-management' | 'pre-approval' | 'learning' | 'homes';
 
 const navItems: { id: MainNavSection; label: string; to: string }[] = [
   { id: 'dashboard', label: 'Dashboard', to: '/dashboard' },
+  { id: 'homes', label: 'Homes', to: '/homes' },
   { id: 'money-management', label: 'Money Management', to: '/money-management' },
   { id: 'pre-approval', label: 'Pre-Approval', to: '/pre-approval' },
   { id: 'learning', label: 'Learning', to: '/learning' },

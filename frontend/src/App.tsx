@@ -6,6 +6,7 @@ import { MoneyManagementPage } from '@/pages/MoneyManagementPage';
 import { PreApprovalPage } from '@/pages/PreApproval/PreApprovalPage';
 import { LearningPage } from '@/pages/LearningPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { HomesPage } from '@/pages/HomesPage';
 import { PlaceHolder1 } from '@/pages/PlaceHolder1';
 import { PlaceHolder2 } from '@/pages/PlaceHolder2';
 import { PlaceHolder3 } from '@/pages/PlaceHolder3';
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
   { path: '/pre-approval',  Component: PreApprovalPage },
   { path: '/learning',      Component: LearningPage },
   { path: '/profile',       Component: ProfilePage },
+  { path: '/homes',         Component: HomesPage },
   { path: '/page1',         Component: PlaceHolder1 },
   { path: '/page2',         Component: PlaceHolder2 },
   { path: '/page3',         Component: PlaceHolder3 },

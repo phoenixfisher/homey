@@ -11,6 +11,7 @@ export type UserProfile = {
   monthlyIncome: number | null;
   monthlyExpenses: number | null;
   totalSavings: number | null;
+  targetZipCode: string | null;
   industryOfWork: string | null;
   role: string;
 };

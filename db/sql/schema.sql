@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   monthly_income DECIMAL(12,2) NULL,
   monthly_expenses DECIMAL(12,2) NULL,
   total_savings DECIMAL(12,2) NULL,
+  target_zip_code VARCHAR(10) NULL,
   industry_of_work ENUM(
     'Technology',
     'Healthcare',

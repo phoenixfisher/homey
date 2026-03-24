@@ -1,5 +1,6 @@
 using System.Data;
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using BCrypt.Net;
 using MySqlConnector;
@@ -219,6 +220,7 @@ app.MapGet("/api/profile/me", (IDbConnection db, HttpContext httpContext) =>
             monthly_income,
             monthly_expenses,
             total_savings,
+            target_zip_code,
             industry_of_work,
             role
         FROM users
@@ -250,6 +252,7 @@ app.MapGet("/api/profile/me", (IDbConnection db, HttpContext httpContext) =>
             reader.IsDBNull(reader.GetOrdinal("monthly_income")) ? null : reader.GetDecimal(reader.GetOrdinal("monthly_income")),
             reader.IsDBNull(reader.GetOrdinal("monthly_expenses")) ? null : reader.GetDecimal(reader.GetOrdinal("monthly_expenses")),
             reader.IsDBNull(reader.GetOrdinal("total_savings")) ? null : reader.GetDecimal(reader.GetOrdinal("total_savings")),
+            reader.IsDBNull(reader.GetOrdinal("target_zip_code")) ? null : reader.GetString(reader.GetOrdinal("target_zip_code")),
             reader.IsDBNull(reader.GetOrdinal("industry_of_work")) ? null : reader.GetString(reader.GetOrdinal("industry_of_work")),
             reader.GetString(reader.GetOrdinal("role"))
         );
@@ -285,6 +288,7 @@ app.MapPut("/api/profile/me", (UpdateProfileRequest request, IDbConnection db, H
             monthly_income = @monthly_income,
             monthly_expenses = @monthly_expenses,
             total_savings = @total_savings,
+            target_zip_code = @target_zip_code,
             industry_of_work = @industry_of_work
         WHERE user_id = @user_id;
         """;
@@ -304,6 +308,9 @@ app.MapPut("/api/profile/me", (UpdateProfileRequest request, IDbConnection db, H
         cmd.Parameters.Add(new MySqlParameter("@monthly_income", request.MonthlyIncome ?? (object)DBNull.Value));
         cmd.Parameters.Add(new MySqlParameter("@monthly_expenses", request.MonthlyExpenses ?? (object)DBNull.Value));
         cmd.Parameters.Add(new MySqlParameter("@total_savings", request.TotalSavings ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@target_zip_code", string.IsNullOrWhiteSpace(request.TargetZipCode)
+            ? DBNull.Value
+            : request.TargetZipCode.Trim()));
         cmd.Parameters.Add(new MySqlParameter("@industry_of_work", string.IsNullOrWhiteSpace(request.IndustryOfWork)
             ? DBNull.Value
             : request.IndustryOfWork.Trim()));
@@ -332,6 +339,69 @@ app.MapPut("/api/profile/me", (UpdateProfileRequest request, IDbConnection db, H
     httpContext.Session.SetString(UserSessionKey, JsonSerializer.Serialize(refreshedSession));
 
     return Results.Ok();
+});
+
+app.MapGet("/api/homes/search", async (string zip, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    var normalizedZip = NormalizeZip(zip);
+    if (normalizedZip is null)
+    {
+        return Results.BadRequest("A valid ZIP code is required.");
+    }
+
+    const string profileSql = """
+        SELECT monthly_income, monthly_expenses, desired_home_price
+        FROM users
+        WHERE user_id = @user_id
+        LIMIT 1;
+        """;
+
+    decimal monthlyIncome = 0;
+    decimal monthlyExpenses = 0;
+    decimal desiredHomePrice = 0;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = profileSql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+
+        using var reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            monthlyIncome = reader.IsDBNull(reader.GetOrdinal("monthly_income"))
+                ? 0
+                : reader.GetDecimal(reader.GetOrdinal("monthly_income"));
+            monthlyExpenses = reader.IsDBNull(reader.GetOrdinal("monthly_expenses"))
+                ? 0
+                : reader.GetDecimal(reader.GetOrdinal("monthly_expenses"));
+            desiredHomePrice = reader.IsDBNull(reader.GetOrdinal("desired_home_price"))
+                ? 0
+                : reader.GetDecimal(reader.GetOrdinal("desired_home_price"));
+        }
+    }
+
+    var nearbyZips = BuildNearbyZipCodes(normalizedZip);
+    var listings = await FetchListingsForZipsAsync(nearbyZips);
+    if (listings.Count == 0)
+    {
+        return Results.NotFound("No homes found for this ZIP area.");
+    }
+    var grouped = GroupListingsByAffordability(listings, monthlyIncome, monthlyExpenses, desiredHomePrice);
+
+    return Results.Ok(new HomesSearchResponse(
+        normalizedZip,
+        nearbyZips,
+        grouped.WithinRange,
+        grouped.SlightlyAboveRange,
+        grouped.BelowComfortRange
+    ));
 });
 
 app.Run();
@@ -416,6 +486,243 @@ static bool TryGetSessionUser(HttpContext httpContext, out AuthResponse? user)
     return user is not null;
 }
 
+static string? NormalizeZip(string? zip)
+{
+    if (string.IsNullOrWhiteSpace(zip))
+    {
+        return null;
+    }
+
+    var digits = new string(zip.Where(char.IsDigit).ToArray());
+    return digits.Length == 5 ? digits : null;
+}
+
+static List<string> BuildNearbyZipCodes(string centerZip)
+{
+    var result = new List<string> { centerZip };
+    if (!int.TryParse(centerZip, NumberStyles.None, CultureInfo.InvariantCulture, out var numericZip))
+    {
+        return result;
+    }
+
+    foreach (var offset in new[] { -2, -1, 1, 2 })
+    {
+        var nearby = numericZip + offset;
+        if (nearby >= 10000 && nearby <= 99999)
+        {
+            result.Add(nearby.ToString("D5", CultureInfo.InvariantCulture));
+        }
+    }
+
+    return result.Distinct().ToList();
+}
+
+static async Task<List<HomeListing>> FetchListingsForZipsAsync(List<string> zipCodes)
+{
+    var rapidApiKey = Environment.GetEnvironmentVariable("RAPIDAPI_KEY");
+    var rapidApiHost = Environment.GetEnvironmentVariable("RAPIDAPI_HOST") ?? "zillow-com1.p.rapidapi.com";
+    var endpoint = Environment.GetEnvironmentVariable("RAPIDAPI_ZILLOW_SEARCH_PATH") ?? "/propertyExtendedSearch";
+
+    if (string.IsNullOrWhiteSpace(rapidApiKey))
+    {
+        return BuildFallbackListings(zipCodes);
+    }
+
+    var listings = new List<HomeListing>();
+    using var client = new HttpClient
+    {
+        Timeout = TimeSpan.FromSeconds(15),
+        BaseAddress = new Uri($"https://{rapidApiHost}"),
+    };
+    client.DefaultRequestHeaders.Add("X-RapidAPI-Key", rapidApiKey);
+    client.DefaultRequestHeaders.Add("X-RapidAPI-Host", rapidApiHost);
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+    foreach (var zip in zipCodes)
+    {
+        try
+        {
+            var response = await client.GetAsync($"{endpoint}?location={zip}&statusType=ForSale&home_type=Houses&page=1");
+            if (!response.IsSuccessStatusCode)
+            {
+                continue;
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            listings.AddRange(ParseListingsFromRapidApi(doc, zip));
+        }
+        catch
+        {
+            // Continue to other ZIPs.
+        }
+    }
+
+    var deduped = listings
+        .GroupBy(l => l.ListingId)
+        .Select(g => g.First())
+        .ToList();
+    return deduped.Count > 0 ? deduped : BuildFallbackListings(zipCodes);
+}
+
+static List<HomeListing> ParseListingsFromRapidApi(JsonDocument doc, string zip)
+{
+    var results = new List<HomeListing>();
+    if (!doc.RootElement.TryGetProperty("props", out var props) || props.ValueKind != JsonValueKind.Array)
+    {
+        return results;
+    }
+
+    foreach (var item in props.EnumerateArray())
+    {
+        var listingId = item.TryGetProperty("zpid", out var zpidElement)
+            ? zpidElement.ToString()
+            : Guid.NewGuid().ToString("N");
+        var homeStatus = item.TryGetProperty("homeStatus", out var homeStatusElement)
+            ? homeStatusElement.ToString()
+            : string.Empty;
+        if (!string.IsNullOrWhiteSpace(homeStatus) &&
+            !homeStatus.Contains("FOR_SALE", StringComparison.OrdinalIgnoreCase))
+        {
+            continue;
+        }
+
+        if (!item.TryGetProperty("price", out var priceElement) ||
+            !decimal.TryParse(priceElement.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
+        {
+            continue;
+        }
+
+        var latitude = item.TryGetProperty("latitude", out var latElement)
+            && double.TryParse(latElement.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var lat)
+            ? lat
+            : 0d;
+        var longitude = item.TryGetProperty("longitude", out var lngElement)
+            && double.TryParse(lngElement.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var lng)
+            ? lng
+            : 0d;
+        var address = item.TryGetProperty("address", out var addressElement)
+            ? addressElement.ToString()
+            : $"Listing in {zip}";
+        var beds = item.TryGetProperty("bedrooms", out var bedsElement) &&
+            int.TryParse(bedsElement.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var bedsValue)
+            ? bedsValue
+            : 0;
+        var baths = item.TryGetProperty("bathrooms", out var bathsElement) &&
+            decimal.TryParse(bathsElement.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var bathsValue)
+            ? bathsValue
+            : 0m;
+        var sqft = item.TryGetProperty("livingArea", out var sqftElement) &&
+            int.TryParse(sqftElement.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var sqftValue)
+            ? sqftValue
+            : 0;
+        var detailUrl = item.TryGetProperty("detailUrl", out var detailUrlElement)
+            ? $"https://www.zillow.com{detailUrlElement}"
+            : null;
+        var imageUrl = item.TryGetProperty("imgSrc", out var imageElement)
+            ? imageElement.ToString()
+            : null;
+
+        results.Add(new HomeListing(listingId, address, zip, price, beds, baths, sqft, latitude, longitude, detailUrl, imageUrl));
+    }
+
+    return results;
+}
+
+static List<HomeListing> BuildFallbackListings(List<string> zipCodes)
+{
+    var random = new Random(84042);
+    var anchorData = new Dictionary<string, (double Lat, double Lng, decimal BaselinePrice)>
+    {
+        ["84042"] = (40.1652, -111.6247, 515000m),
+        ["84043"] = (40.3916, -111.8508, 520000m),
+        ["84003"] = (40.3769, -111.7958, 545000m),
+        ["84604"] = (40.2549, -111.6585, 500000m),
+        ["84601"] = (40.2338, -111.6585, 470000m),
+        ["84058"] = (40.2969, -111.6946, 465000m),
+        ["84057"] = (40.3005, -111.6999, 490000m),
+    };
+
+    var listings = new List<HomeListing>();
+    foreach (var zip in zipCodes)
+    {
+        var anchor = anchorData.TryGetValue(zip, out var value)
+            ? value
+            : (40.1652 + random.NextDouble() * 0.25, -111.6247 + random.NextDouble() * 0.25, 500000m);
+
+        for (var i = 0; i < 8; i++)
+        {
+            var ratio = 0.72m + (decimal)random.NextDouble() * 0.72m;
+            var price = Math.Round(anchor.Item3 * ratio, 0);
+            var beds = random.Next(2, 6);
+            var baths = (decimal)(random.Next(2, 5) - 0.5);
+            var sqft = random.Next(1200, 3600);
+            var lat = anchor.Item1 + (random.NextDouble() - 0.5) * 0.05;
+            var lng = anchor.Item2 + (random.NextDouble() - 0.5) * 0.05;
+            var streetNumber = 100 + i * 11;
+            var streetName = new[] { "Maple", "Canyon", "River", "Aspen", "Sunset", "Juniper", "Oak", "Willow" }[i % 8];
+
+            listings.Add(new HomeListing(
+                $"sample-{zip}-{i}",
+                $"{streetNumber} {streetName} Dr",
+                zip,
+                price,
+                beds,
+                baths,
+                sqft,
+                lat,
+                lng,
+                null,
+                null
+            ));
+        }
+    }
+
+    return listings;
+}
+
+static HomesGroupedResult GroupListingsByAffordability(
+    List<HomeListing> listings,
+    decimal monthlyIncome,
+    decimal monthlyExpenses,
+    decimal desiredHomePrice)
+{
+    var disposable = Math.Max(monthlyIncome - monthlyExpenses, 0);
+    var dtiCap = monthlyIncome * 0.36m;
+    var monthlyHousingBudget = Math.Max(Math.Min(dtiCap, disposable * 0.9m), 1200m);
+    var maxComfortPrice = monthlyHousingBudget / 0.007m;
+    if (desiredHomePrice > 0)
+    {
+        maxComfortPrice = (maxComfortPrice + desiredHomePrice) / 2m;
+    }
+
+    var belowCutoff = maxComfortPrice * 0.85m;
+    var aboveCutoff = maxComfortPrice * 1.15m;
+
+    var below = listings
+        .Where(l => l.Price < belowCutoff)
+        .OrderByDescending(l => l.Price)
+        .Take(12)
+        .ToList();
+    var within = listings
+        .Where(l => l.Price >= belowCutoff && l.Price <= maxComfortPrice)
+        .OrderByDescending(l => l.Price)
+        .Take(12)
+        .ToList();
+    var above = listings
+        .Where(l => l.Price > maxComfortPrice && l.Price <= aboveCutoff)
+        .OrderBy(l => l.Price)
+        .Take(12)
+        .ToList();
+
+    if (within.Count == 0)
+    {
+        within = listings.OrderBy(l => Math.Abs(l.Price - maxComfortPrice)).Take(12).ToList();
+    }
+
+    return new HomesGroupedResult(within, above, below);
+}
+
 public record RegisterRequest(string Username, string Email, string Password, string FirstName, string LastName);
 
 public record LoginRequest(string UsernameOrEmail, string Password);
@@ -433,6 +740,7 @@ public record UserProfileResponse(
     decimal? MonthlyIncome,
     decimal? MonthlyExpenses,
     decimal? TotalSavings,
+    string? TargetZipCode,
     string? IndustryOfWork,
     string Role
 );
@@ -447,5 +755,34 @@ public record UpdateProfileRequest(
     decimal? MonthlyIncome,
     decimal? MonthlyExpenses,
     decimal? TotalSavings,
+    string? TargetZipCode,
     string? IndustryOfWork
+);
+
+public record HomeListing(
+    string ListingId,
+    string Address,
+    string ZipCode,
+    decimal Price,
+    int Beds,
+    decimal Baths,
+    int Sqft,
+    double Latitude,
+    double Longitude,
+    string? DetailUrl,
+    string? ImageUrl
+);
+
+public record HomesSearchResponse(
+    string SelectedZip,
+    List<string> NearbyZips,
+    List<HomeListing> WithinRange,
+    List<HomeListing> SlightlyAboveRange,
+    List<HomeListing> BelowComfortRange
+);
+
+public record HomesGroupedResult(
+    List<HomeListing> WithinRange,
+    List<HomeListing> SlightlyAboveRange,
+    List<HomeListing> BelowComfortRange
 );
