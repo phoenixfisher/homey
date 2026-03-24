@@ -161,7 +161,16 @@ app.MapPost("/api/auth/login", (LoginRequest request, IDbConnection db, HttpCont
         var firstName = reader.GetString(reader.GetOrdinal("first_name"));
         var lastName = reader.GetString(reader.GetOrdinal("last_name"));
 
-        var isValid = BCrypt.Net.BCrypt.Verify(request.Password, passwordHash);
+        var isValid = false;
+        try
+        {
+            isValid = BCrypt.Net.BCrypt.Verify(request.Password, passwordHash);
+        }
+        catch
+        {
+            // Handle invalid/non-BCrypt legacy values without crashing the endpoint.
+            return Results.Unauthorized();
+        }
         if (!isValid)
         {
             return Results.Unauthorized();
