@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Home, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Home } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
+import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import { LoanApplicationView } from './LoanApplicationView';
 import { GatherDocumentsView } from './GatherDocumentsView';
 import { QualificationView } from './QualificationView';
 import { PreApprovalLetterView } from './PreApprovalLetterView';
+import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout, type SessionUser } from '@/lib/auth';
 
 type View = null | 'loan-application' | 'gather-documents' | 'qualification' | 'pre-approval';
 
@@ -19,7 +21,31 @@ const views: { id: View; label: string }[] = [
 ];
 
 export function PreApprovalPage() {
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState<View>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const user = await fetchSessionUser();
+      setSessionUser(user);
+      setIsLoggedIn(!!user || getIsLoggedIn() || !!getUserProfile());
+    })();
+  }, []);
+
+  const handleHeaderAuthClick = () => {
+    if (isLoggedIn) {
+      void backendLogout();
+      logout();
+      setIsLoggedIn(false);
+      setSessionUser(null);
+      void navigate('/');
+      return;
+    }
+
+    void navigate('/login');
+  };
 
   if (activeView === 'loan-application') {
     return (
@@ -80,30 +106,17 @@ export function PreApprovalPage() {
 
   return (
     <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
-      {/* Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="relative z-20 glass border-b border-white/10"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <Home className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-white">Homey</span>
-            </Link>
-            <nav className="hidden md:flex items-center gap-8">
-              <Link to="/#features" className="text-white/80 hover:text-white transition-colors">Features</Link>
-              <Link to="/learning" className="text-white/80 hover:text-white transition-colors">Learning</Link>
-              <Link to="/pre-approval" className="text-white font-semibold hover:text-white transition-colors">Pre-Approval</Link>
-              <Link to="/#how-it-works" className="text-white/80 hover:text-white transition-colors">How It Works</Link>
-              <Link to="/#about" className="text-white/80 hover:text-white transition-colors">About</Link>
-            </nav>
-          </div>
-        </div>
-      </motion.header>
+      <MainNav
+        active="pre-approval"
+        isLoggedIn={isLoggedIn}
+        rightContent={(
+          <AuthHeaderActions
+            isLoggedIn={isLoggedIn}
+            firstName={sessionUser?.firstName ?? null}
+            onAuthClick={handleHeaderAuthClick}
+          />
+        )}
+      />
 
       {/* Main Content */}
       <main className="flex-1 relative z-10 p-4 md:p-8">

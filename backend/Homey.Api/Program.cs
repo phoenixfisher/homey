@@ -200,6 +200,140 @@ app.MapPost("/api/auth/logout", (HttpContext httpContext) =>
     return Results.Ok();
 });
 
+app.MapGet("/api/profile/me", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    const string sql = """
+        SELECT
+            user_id,
+            username,
+            email,
+            first_name,
+            last_name,
+            desired_home_price,
+            credit_score,
+            monthly_income,
+            monthly_expenses,
+            total_savings,
+            industry_of_work,
+            role
+        FROM users
+        WHERE user_id = @user_id
+        LIMIT 1;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read())
+        {
+            return Results.NotFound();
+        }
+
+        var response = new UserProfileResponse(
+            reader.GetInt32(reader.GetOrdinal("user_id")),
+            reader.GetString(reader.GetOrdinal("username")),
+            reader.GetString(reader.GetOrdinal("email")),
+            reader.GetString(reader.GetOrdinal("first_name")),
+            reader.GetString(reader.GetOrdinal("last_name")),
+            reader.IsDBNull(reader.GetOrdinal("desired_home_price")) ? null : reader.GetDecimal(reader.GetOrdinal("desired_home_price")),
+            reader.IsDBNull(reader.GetOrdinal("credit_score")) ? null : Convert.ToUInt16(reader.GetValue(reader.GetOrdinal("credit_score"))),
+            reader.IsDBNull(reader.GetOrdinal("monthly_income")) ? null : reader.GetDecimal(reader.GetOrdinal("monthly_income")),
+            reader.IsDBNull(reader.GetOrdinal("monthly_expenses")) ? null : reader.GetDecimal(reader.GetOrdinal("monthly_expenses")),
+            reader.IsDBNull(reader.GetOrdinal("total_savings")) ? null : reader.GetDecimal(reader.GetOrdinal("total_savings")),
+            reader.IsDBNull(reader.GetOrdinal("industry_of_work")) ? null : reader.GetString(reader.GetOrdinal("industry_of_work")),
+            reader.GetString(reader.GetOrdinal("role"))
+        );
+
+        return Results.Ok(response);
+    }
+});
+
+app.MapPut("/api/profile/me", (UpdateProfileRequest request, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+    {
+        return Results.Unauthorized();
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Username) ||
+        string.IsNullOrWhiteSpace(request.Email) ||
+        string.IsNullOrWhiteSpace(request.FirstName) ||
+        string.IsNullOrWhiteSpace(request.LastName))
+    {
+        return Results.BadRequest("Username, email, first name, and last name are required.");
+    }
+
+    const string sql = """
+        UPDATE users
+        SET
+            username = @username,
+            email = @email,
+            first_name = @first_name,
+            last_name = @last_name,
+            desired_home_price = @desired_home_price,
+            credit_score = @credit_score,
+            monthly_income = @monthly_income,
+            monthly_expenses = @monthly_expenses,
+            total_savings = @total_savings,
+            industry_of_work = @industry_of_work
+        WHERE user_id = @user_id;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@username", request.Username.Trim()));
+        cmd.Parameters.Add(new MySqlParameter("@email", request.Email.Trim()));
+        cmd.Parameters.Add(new MySqlParameter("@first_name", request.FirstName.Trim()));
+        cmd.Parameters.Add(new MySqlParameter("@last_name", request.LastName.Trim()));
+        cmd.Parameters.Add(new MySqlParameter("@desired_home_price", request.DesiredHomePrice ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@credit_score", request.CreditScore ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@monthly_income", request.MonthlyIncome ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@monthly_expenses", request.MonthlyExpenses ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@total_savings", request.TotalSavings ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@industry_of_work", string.IsNullOrWhiteSpace(request.IndustryOfWork)
+            ? DBNull.Value
+            : request.IndustryOfWork.Trim()));
+
+        try
+        {
+            var rows = cmd.ExecuteNonQuery();
+            if (rows == 0)
+            {
+                return Results.NotFound();
+            }
+        }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            return Results.Conflict("Username or email already exists.");
+        }
+    }
+
+    var refreshedSession = new AuthResponse(
+        sessionUser.UserId,
+        request.Username.Trim(),
+        request.Email.Trim(),
+        request.FirstName.Trim(),
+        request.LastName.Trim()
+    );
+    httpContext.Session.SetString(UserSessionKey, JsonSerializer.Serialize(refreshedSession));
+
+    return Results.Ok();
+});
+
 app.Run();
 
 static string? BuildConnectionStringFromDbEnvironment()
@@ -269,8 +403,49 @@ static void LoadRootEnvFile()
     }
 }
 
+static bool TryGetSessionUser(HttpContext httpContext, out AuthResponse? user)
+{
+    user = null;
+    var value = httpContext.Session.GetString("User");
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return false;
+    }
+
+    user = JsonSerializer.Deserialize<AuthResponse>(value);
+    return user is not null;
+}
+
 public record RegisterRequest(string Username, string Email, string Password, string FirstName, string LastName);
 
 public record LoginRequest(string UsernameOrEmail, string Password);
 
 public record AuthResponse(int UserId, string Username, string Email, string FirstName, string LastName);
+
+public record UserProfileResponse(
+    int UserId,
+    string Username,
+    string Email,
+    string FirstName,
+    string LastName,
+    decimal? DesiredHomePrice,
+    ushort? CreditScore,
+    decimal? MonthlyIncome,
+    decimal? MonthlyExpenses,
+    decimal? TotalSavings,
+    string? IndustryOfWork,
+    string Role
+);
+
+public record UpdateProfileRequest(
+    string Username,
+    string Email,
+    string FirstName,
+    string LastName,
+    decimal? DesiredHomePrice,
+    ushort? CreditScore,
+    decimal? MonthlyIncome,
+    decimal? MonthlyExpenses,
+    decimal? TotalSavings,
+    string? IndustryOfWork
+);

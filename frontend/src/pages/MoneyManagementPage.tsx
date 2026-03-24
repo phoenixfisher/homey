@@ -11,7 +11,16 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
-import { getUserProfile, type HomeyUserProfile } from '@/lib/auth';
+import { AuthHeaderActions } from '@/components/AuthHeaderActions';
+import {
+  backendLogout,
+  fetchSessionUser,
+  getUserProfile,
+  isLoggedIn as getIsLoggedIn,
+  logout,
+  type HomeyUserProfile,
+  type SessionUser,
+} from '@/lib/auth';
 
 const STORAGE_KEY = 'homeyMoneyManagementSettings';
 
@@ -43,33 +52,41 @@ function formatCurrency(value: number): string {
 export function MoneyManagementPage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<HomeyUserProfile | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [settings, setSettings] = useState<MoneySettings>(defaultSettings);
   const [savedSettings, setSavedSettings] = useState<MoneySettings>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState('');
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
   useEffect(() => {
-    const savedProfile = getUserProfile();
-    if (savedProfile) {
-      setProfile(savedProfile);
-    }
-    setIsProfileLoaded(true);
+    void (async () => {
+      const user = await fetchSessionUser();
+      setSessionUser(user);
+      setIsAuthenticated(!!user || getIsLoggedIn());
 
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+      const savedProfile = getUserProfile();
+      if (savedProfile) {
+        setProfile(savedProfile);
+      }
+      setIsProfileLoaded(true);
 
-    try {
-      const parsed = JSON.parse(raw) as Partial<MoneySettings>;
-      const nextSettings = {
-        monthlySavingsGoal: parsed.monthlySavingsGoal ?? defaultSettings.monthlySavingsGoal,
-        housingBudget: parsed.housingBudget ?? defaultSettings.housingBudget,
-      };
-      setSettings(nextSettings);
-      setSavedSettings(nextSettings);
-    } catch {
-      setSettings(defaultSettings);
-      setSavedSettings(defaultSettings);
-    }
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+
+      try {
+        const parsed = JSON.parse(raw) as Partial<MoneySettings>;
+        const nextSettings = {
+          monthlySavingsGoal: parsed.monthlySavingsGoal ?? defaultSettings.monthlySavingsGoal,
+          housingBudget: parsed.housingBudget ?? defaultSettings.housingBudget,
+        };
+        setSettings(nextSettings);
+        setSavedSettings(nextSettings);
+      } catch {
+        setSettings(defaultSettings);
+        setSavedSettings(defaultSettings);
+      }
+    })();
   }, [navigate]);
 
   const hasUnsavedChanges =
@@ -109,18 +126,26 @@ export function MoneyManagementPage() {
     };
   }, [profile, settings]);
 
+  const handleLogout = () => {
+    void backendLogout();
+    logout();
+    setSessionUser(null);
+    setIsAuthenticated(false);
+    void navigate('/');
+  };
+
   if (isProfileLoaded && !profile) {
     return (
       <AppLayout>
         <MainNav
           active="money-management"
+          isLoggedIn={isAuthenticated}
           rightContent={(
-            <Link
-              to="/"
-              className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
-            >
-              Home
-            </Link>
+            <AuthHeaderActions
+              isLoggedIn={isAuthenticated}
+              firstName={sessionUser?.firstName ?? null}
+              onAuthClick={handleLogout}
+            />
           )}
         />
         <main className="flex-1 p-4 md:p-8 relative">
@@ -137,8 +162,8 @@ export function MoneyManagementPage() {
               </p>
               <button
                 onClick={() => void navigate('/')}
-                className="px-6 py-3 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all"
-              >
+              className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+            >
                 Go To Home
               </button>
             </motion.div>
@@ -176,13 +201,13 @@ export function MoneyManagementPage() {
     <AppLayout>
       <MainNav
         active="money-management"
+        isLoggedIn
         rightContent={(
-          <Link
-            to="/dashboard"
-            className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
-          >
-            Dashboard
-          </Link>
+          <AuthHeaderActions
+            isLoggedIn
+            firstName={sessionUser?.firstName ?? null}
+            onAuthClick={handleLogout}
+          />
         )}
       />
 

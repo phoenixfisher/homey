@@ -188,6 +188,26 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  a[role='button'],
+  [data-slot='button'] {
+    cursor: pointer;
+  }
+
+  /*
+   * Make white CTA buttons with blue text feel more interactive.
+   * This targets the common Tailwind combo used across the app.
+   */
+  button.bg-white.text-\[\#3e78b2\]:hover,
+  a.bg-white.text-\[\#3e78b2\]:hover {
+    background-color: #dbeafe !important;
+    color: #1d4f86 !important;
   }
 
   input {

@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Home, Award, TrendingUp, DollarSign, LogOut, CheckCircle2, Circle } from 'lucide-react';
+import { Home, Award, TrendingUp, DollarSign, CheckCircle2, Circle } from 'lucide-react';
 import { useNavigate, Link } from 'react-router';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
-import { getUserProfile, logout, type HomeyUserProfile, HOMEY_MILESTONES_KEY } from '@/lib/auth';
+import { AuthHeaderActions } from '@/components/AuthHeaderActions';
+import {
+  backendLogout,
+  fetchSessionUser,
+  getUserProfile,
+  isLoggedIn as getIsLoggedIn,
+  logout,
+  type HomeyUserProfile,
+  type SessionUser,
+  HOMEY_MILESTONES_KEY,
+} from '@/lib/auth';
 
 interface Milestone {
   id: number;
@@ -76,20 +86,28 @@ const initialMilestones: Milestone[] = [
 export function DashboardPage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<HomeyUserProfile | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
   useEffect(() => {
-    const savedProfile = getUserProfile();
-    if (savedProfile) {
-      setProfile(savedProfile);
-    }
-    setIsProfileLoaded(true);
+    void (async () => {
+      const user = await fetchSessionUser();
+      setSessionUser(user);
+      setIsAuthenticated(!!user || getIsLoggedIn());
 
-    const savedMilestones = localStorage.getItem(HOMEY_MILESTONES_KEY);
-    if (savedMilestones) {
-      setMilestones(JSON.parse(savedMilestones) as Milestone[]);
-    }
+      const savedProfile = getUserProfile();
+      if (savedProfile) {
+        setProfile(savedProfile);
+      }
+      setIsProfileLoaded(true);
+
+      const savedMilestones = localStorage.getItem(HOMEY_MILESTONES_KEY);
+      if (savedMilestones) {
+        setMilestones(JSON.parse(savedMilestones) as Milestone[]);
+      }
+    })();
   }, [navigate]);
 
   const toggleMilestone = (milestoneId: number) => {
@@ -101,7 +119,10 @@ export function DashboardPage() {
   };
 
   const handleLogout = () => {
+    void backendLogout();
     logout();
+    setSessionUser(null);
+    setIsAuthenticated(false);
     void navigate('/');
   };
 
@@ -140,7 +161,17 @@ export function DashboardPage() {
   if (isProfileLoaded && !profile) {
     return (
       <AppLayout>
-        <MainNav active="dashboard" />
+        <MainNav
+          active="dashboard"
+          isLoggedIn={isAuthenticated}
+          rightContent={(
+            <AuthHeaderActions
+              isLoggedIn={isAuthenticated}
+              firstName={sessionUser?.firstName ?? null}
+              onAuthClick={handleLogout}
+            />
+          )}
+        />
         <main className="flex-1 p-4 md:p-8 relative">
           <div className="max-w-3xl mx-auto relative z-10">
             <motion.div
@@ -172,14 +203,13 @@ export function DashboardPage() {
     <AppLayout>
       <MainNav
         active="dashboard"
+        isLoggedIn
         rightContent={(
-          <button
-            onClick={handleLogout}
-            className="glass px-4 py-2 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-all flex items-center gap-2"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          <AuthHeaderActions
+            isLoggedIn
+            firstName={sessionUser?.firstName ?? null}
+            onAuthClick={handleLogout}
+          />
         )}
       />
 

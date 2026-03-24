@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
-import { Home, Lock, ArrowRight } from 'lucide-react';
+import { Lock, ArrowRight } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
+import { MainNav } from '@/components/MainNav';
+import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import { backendLogout, fetchSessionUser, logout } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loginForm, setLoginForm] = useState({
     usernameOrEmail: '',
     password: '',
@@ -19,7 +22,7 @@ export function LoginPage() {
     username: '',
     password: '',
   });
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(searchParams.get('mode') === 'register');
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,6 +34,10 @@ export function LoginPage() {
       setIsLoggedIn(!!sessionUser);
     })();
   }, []);
+
+  useEffect(() => {
+    setIsRegisterMode(searchParams.get('mode') === 'register');
+  }, [searchParams]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,33 +117,16 @@ export function LoginPage() {
 
   return (
     <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="relative z-20 glass border-b border-white/10"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <Home className="w-6 h-6 text-white" />
-              </div>
-              <span
-                className="text-2xl font-bold text-white cursor-pointer"
-                onClick={() => navigate('/')}
-              >
-                Homey
-              </span>
-            </div>
-            <button
-              onClick={handleHeaderAuthClick}
-              className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
-            >
-              {isLoggedIn ? 'Sign Out' : 'Login'}
-            </button>
-          </div>
-        </div>
-      </motion.header>
+      <MainNav
+        active="home"
+        isLoggedIn={isLoggedIn}
+        rightContent={(
+          <AuthHeaderActions
+            isLoggedIn={isLoggedIn}
+            onAuthClick={handleHeaderAuthClick}
+          />
+        )}
+      />
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="max-w-3xl w-full">
@@ -192,7 +182,6 @@ export function LoginPage() {
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                       className="w-full px-4 py-3 glass rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
-                      placeholder="••••••••"
                     />
                   </div>
                   <button
@@ -283,7 +272,6 @@ export function LoginPage() {
                         setRegisterForm({ ...registerForm, password: e.target.value })
                       }
                       className="w-full px-4 py-3 glass rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
-                      placeholder="At least 8 characters"
                     />
                   </div>
                   <button
