@@ -50,7 +50,7 @@ export function PreApprovalPage() {
   if (activeView === 'loan-application') {
     return (
       <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
-        <LoanApplicationView onBack={() => setActiveView(null)} />
+        <LoanApplicationView onBack={() => setActiveView(null)} onNext={() => setActiveView('gather-documents')} />
       </AppLayout>
     );
   }
@@ -58,7 +58,7 @@ export function PreApprovalPage() {
   if (activeView === 'gather-documents') {
     return (
       <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
-        <GatherDocumentsView onBack={() => setActiveView(null)} />
+        <GatherDocumentsView onBack={() => setActiveView(null)} onNext={() => setActiveView('qualification')} />
       </AppLayout>
     );
   }
@@ -66,7 +66,7 @@ export function PreApprovalPage() {
   if (activeView === 'qualification') {
     return (
       <AppLayout className="bg-gradient-to-b from-[#3e78b2] via-[#5a8ebd] to-[#92b4a7]">
-        <QualificationView onBack={() => setActiveView(null)} />
+        <QualificationView onBack={() => setActiveView(null)} onNext={() => setActiveView('pre-approval')} />
       </AppLayout>
     );
   }

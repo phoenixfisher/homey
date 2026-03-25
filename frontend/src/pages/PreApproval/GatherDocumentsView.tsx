@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
+  ArrowRight,
   FileText,
   DollarSign,
   Briefcase,
@@ -15,6 +16,7 @@ import {
   File,
   Eye,
 } from 'lucide-react';
+import { getUserProfile, saveUserProfile } from '@/lib/auth';
 
 interface DocSlot {
   id: string;
@@ -37,10 +39,10 @@ const sections: Section[] = [
     title: 'Pay Stubs',
     color: '#3e78b2',
     slots: [
-      { id: 'paystub_1', label: 'Most Recent Pay Stub' },
-      { id: 'paystub_2', label: '2nd Most Recent Pay Stub' },
-      { id: 'paystub_eoy_1', label: 'End-of-Year Pay Stub (if overtime / bonus / commission)' },
-      { id: 'paystub_eoy_2', label: '2nd End-of-Year Pay Stub (if overtime / bonus / commission)' },
+      { id: 'paystub_1', label: '* Most Recent Pay Stub' },
+      { id: 'paystub_2', label: '* 2nd Most Recent Pay Stub' },
+      { id: 'paystub_eoy_1', label: '* End-of-Year Pay Stub (if overtime / bonus / commission)' },
+      { id: 'paystub_eoy_2', label: '* 2nd End-of-Year Pay Stub (if overtime / bonus / commission)' },
     ],
   },
   {
@@ -50,8 +52,8 @@ const sections: Section[] = [
     color: '#92b4a7',
     note: 'Required for self-employed borrowers.',
     slots: [
-      { id: 'tax_1', label: 'Most Recent Federal Tax Return (all pages)' },
-      { id: 'tax_2', label: 'Previous Year Federal Tax Return (all pages)' },
+      { id: 'tax_1', label: '* Most Recent Federal Tax Return (all pages)' },
+      { id: 'tax_2', label: '* Previous Year Federal Tax Return (all pages)' },
     ],
   },
   {
@@ -60,8 +62,8 @@ const sections: Section[] = [
     title: 'W-2s',
     color: '#bdc4a7',
     slots: [
-      { id: 'w2_year1', label: 'W-2 — Most Recent Year' },
-      { id: 'w2_year2', label: 'W-2 — Previous Year' },
+      { id: 'w2_year1', label: '* W-2 — Most Recent Year' },
+      { id: 'w2_year2', label: '* W-2 — Previous Year' },
     ],
   },
   {
@@ -70,7 +72,7 @@ const sections: Section[] = [
     title: 'Government-Issued ID',
     color: '#bf8b85',
     slots: [
-      { id: 'gov_id', label: "Driver's License or State-Issued Photo ID" },
+      { id: 'gov_id', label: "* Driver's License or State-Issued Photo ID" },
     ],
   },
   {
@@ -79,10 +81,10 @@ const sections: Section[] = [
     title: 'Bank Statements',
     color: '#5a8ebd',
     slots: [
-      { id: 'bank_1', label: 'Most Recent Bank Statement — Account 1' },
-      { id: 'bank_2', label: '2nd Most Recent Bank Statement — Account 1' },
-      { id: 'bank_3', label: 'Most Recent Bank Statement — Account 2 (if applicable)' },
-      { id: 'bank_4', label: '2nd Most Recent Bank Statement — Account 2 (if applicable)' },
+      { id: 'bank_1', label: '* Most Recent Bank Statement — Account 1' },
+      { id: 'bank_2', label: '* 2nd Most Recent Bank Statement — Account 1' },
+      { id: 'bank_3', label: '* Most Recent Bank Statement — Account 2 (if applicable)' },
+      { id: 'bank_4', label: '* 2nd Most Recent Bank Statement — Account 2 (if applicable)' },
     ],
   },
 ];
@@ -103,18 +105,40 @@ function formatBytes(bytes: number): string {
 
 interface Props {
   onBack: () => void;
+  onNext: () => void;
 }
 
-export function GatherDocumentsView({ onBack }: Props) {
-  const [openSection, setOpenSection] = useState<string | null>('paystubs');
+export function GatherDocumentsView({ onBack, onNext }: Props) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
   const [files, setFiles] = useState<Record<string, StoredFile>>({});
   const [preview, setPreview] = useState<StoredFile | null>(null);
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [savingsTotal, setSavingsTotal] = useState('');
+  const [monthlyExpenses, setMonthlyExpenses] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) setFiles(JSON.parse(saved) as Record<string, StoredFile>);
+
+    const profile = getUserProfile();
+    if (profile) {
+      setMonthlyIncome(profile.monthlyIncome ?? '');
+      setSavingsTotal(profile.savingsTotal ?? '');
+      setMonthlyExpenses(profile.monthlyExpenses ?? '');
+    }
   }, []);
+
+  const handleIncomeSummaryChange = (field: 'monthlyIncome' | 'savingsTotal' | 'monthlyExpenses', value: string) => {
+    const digits = value.replace(/[^0-9]/g, '');
+    if (field === 'monthlyIncome') setMonthlyIncome(digits);
+    else if (field === 'savingsTotal') setSavingsTotal(digits);
+    else setMonthlyExpenses(digits);
+
+    const profile = getUserProfile() ?? { name: '', desiredHomePrice: '', creditScore: '', monthlyIncome: '', yearlyIncome: '', savingsTotal: '', monthlyExpenses: '', industry: '' };
+    saveUserProfile({ ...profile, [field]: digits });
+  };
 
   const saveFiles = (updated: Record<string, StoredFile>) => {
     setFiles(updated);
@@ -146,6 +170,16 @@ export function GatherDocumentsView({ onBack }: Props) {
     a.click();
   };
 
+  const handleDownloadAll = () => {
+    sections.forEach((section) => {
+      section.slots.forEach((slot) => {
+        const stored = files[slot.id];
+        if (stored) handleDownload(stored);
+      });
+    });
+    setShowDownloadConfirm(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -163,12 +197,74 @@ export function GatherDocumentsView({ onBack }: Props) {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-white">Gather Documents</h1>
-          <p className="text-white/60 text-sm mt-0.5">Upload your documents — stored locally in your browser</p>
+          <p className="text-white/60 text-sm mt-0.5">Upload your documents!</p>
+          <p className="text-white/60 text-sm">*Stored only locally</p>
         </div>
       </div>
 
       {/* Accordion sections */}
       <div className="flex flex-col gap-3 w-full">
+
+        {/* Income Summary */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass rounded-2xl overflow-hidden"
+        >
+          <div className="flex items-center justify-between px-8 py-5">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0" style={{ backgroundColor: '#3e78b250' }}>
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <span className="text-white font-bold text-xl">Income Summary</span>
+            </div>
+            <button
+              onClick={() => setShowDownloadConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-white hover:bg-white/20 transition-all text-sm shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              Download All Documents
+            </button>
+          </div>
+          <div className="px-8 pb-8 flex flex-col gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div className="flex flex-col gap-2">
+                <label className="text-white/90 text-base font-medium">Monthly Income</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={monthlyIncome}
+                  onChange={(e) => handleIncomeSummaryChange('monthlyIncome', e.target.value)}
+                  placeholder="e.g. 5000"
+                  className="px-5 py-3 glass rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all text-base w-full"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-white/90 text-base font-medium">Monthly Expenses</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={monthlyExpenses}
+                  onChange={(e) => handleIncomeSummaryChange('monthlyExpenses', e.target.value)}
+                  placeholder="e.g. 2500"
+                  className="px-5 py-3 glass rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all text-base w-full"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-white/90 text-base font-medium">Savings Total</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={savingsTotal}
+                  onChange={(e) => handleIncomeSummaryChange('savingsTotal', e.target.value)}
+                  placeholder="e.g. 25000"
+                  className="px-5 py-3 glass rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all text-base w-full"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {sections.map((section, i) => {
           const isOpen = openSection === section.id;
           const uploadedCount = section.slots.filter(s => files[s.id]).length;
@@ -295,6 +391,100 @@ export function GatherDocumentsView({ onBack }: Props) {
           );
         })}
       </div>
+
+      {/* Bottom CTA */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="mt-4 glass rounded-2xl p-8 flex flex-col md:flex-row items-center gap-6"
+      >
+        <div className="flex-1">
+          <h3 className="text-white font-bold text-2xl mb-2">Ready to see if you qualify?</h3>
+          <p className="text-white/70 text-base leading-relaxed">
+            Once your documents are gathered, the next step is understanding what your lender is calculating to determine your qualification.
+          </p>
+        </div>
+        <button
+          onClick={onNext}
+          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
+          style={{ backgroundColor: '#3e78b260' }}
+        >
+          Next: Qualification
+          <ArrowRight className="w-5 h-5" />
+        </button>
+      </motion.div>
+
+      {/* Download All Confirmation Modal */}
+      <AnimatePresence>
+        {showDownloadConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowDownloadConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass rounded-3xl p-8 w-full max-w-lg flex flex-col gap-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Download All Documents?</h2>
+                <button
+                  onClick={() => setShowDownloadConfirm(false)}
+                  className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/20 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                {sections.map((section) => {
+                  const uploadedSlots = section.slots.filter((slot) => files[slot.id]);
+                  if (uploadedSlots.length === 0) return null;
+                  return (
+                    <div key={section.id}>
+                      <p className="text-white font-semibold text-sm mb-2" style={{ color: section.color === '#3e78b2' ? '#93c5fd' : section.color }}>{section.title}</p>
+                      <ul className="flex flex-col gap-1 pl-3">
+                        {uploadedSlots.map((slot) => (
+                          <li key={slot.id} className="flex items-center gap-2 text-white/80 text-sm">
+                            <File className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                            {files[slot.id].name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+                {sections.every((s) => s.slots.every((slot) => !files[slot.id])) && (
+                  <p className="text-white/60 text-sm">No documents uploaded yet.</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDownloadConfirm(false)}
+                  className="px-5 py-2.5 glass rounded-xl text-white hover:bg-white/20 transition-all text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDownloadAll}
+                  disabled={sections.every((s) => s.slots.every((slot) => !files[slot.id]))}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#3e78b2] rounded-xl font-semibold hover:bg-white/90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download className="w-4 h-4" />
+                  Download All
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Preview Modal */}
       <AnimatePresence>

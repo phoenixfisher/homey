@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
+  ArrowRight,
   User,
   Home,
   Briefcase,
@@ -12,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { getUserProfile, saveUserProfile, fetchSessionUser } from '@/lib/auth';
 
 type FieldType = 'text' | 'date' | 'number' | 'tel' | 'email' | 'select' | 'textarea' | 'ssn' | 'currency' | 'phone';
 
@@ -42,12 +44,12 @@ const sections: Section[] = [
     color: '#3e78b2',
     fields: [
       { key: 'fullName',      label: 'Full Legal Name',        placeholder: 'First Middle Last',          type: 'text' },
-      { key: 'dob',           label: 'Date of Birth',          placeholder: '',                           type: 'date' },
-      { key: 'ssn',           label: 'Social Security Number', placeholder: 'XXX-XX-XXXX',               type: 'ssn' },
-      { key: 'maritalStatus', label: 'Marital Status',         placeholder: 'Select...',                  type: 'select', options: ['Single', 'Married', 'Separated', 'Divorced', 'Widowed'] },
-      { key: 'phone',         label: 'Phone Number',           placeholder: '(555) 555-5555',             type: 'phone' },
+      { key: 'dob',           label: '* Date of Birth',          placeholder: '',                           type: 'date' },
+      { key: 'ssn',           label: '* Social Security Number', placeholder: 'XXX-XX-XXXX',               type: 'ssn' },
+      { key: 'maritalStatus', label: '* Marital Status',         placeholder: 'Select...',                  type: 'select', options: ['Single', 'Married', 'Separated', 'Divorced', 'Widowed'] },
+      { key: 'phone',         label: '* Phone Number',           placeholder: '(555) 555-5555',             type: 'phone' },
       { key: 'email',         label: 'Email Address',          placeholder: 'you@example.com',            type: 'email' },
-      { key: 'dependents',    label: 'Number of Dependents',   placeholder: '0',                          type: 'number', min: 0, max: 20 },
+      { key: 'dependents',    label: '* Number of Dependents',   placeholder: '0',                          type: 'number', min: 0, max: 20 },
     ],
   },
   {
@@ -56,12 +58,12 @@ const sections: Section[] = [
     title: 'Housing History',
     color: '#5a8ebd',
     fields: [
-      { key: 'currentAddress',        label: 'Current Address',                  placeholder: '123 Main St, City, State 12345', type: 'text' },
-      { key: 'currentAddressYears',   label: 'Years at Current Address',         placeholder: '0',                              type: 'number', min: 0, max: 50 },
-      { key: 'previousAddress',       label: 'Previous Address (if < 2 yrs)',    placeholder: '456 Oak Ave, City, State 12345', type: 'text' },
-      { key: 'rentOrOwn',             label: 'Rent or Own',                      placeholder: 'Select...',                      type: 'select', options: ['Rent', 'Own', 'Living with family', 'Other'] },
-      { key: 'monthlyHousingPayment', label: 'Monthly Housing Payment',          placeholder: '$0',                             type: 'currency' },
-      { key: 'landlordContact',       label: 'Landlord Contact (if renting)',    placeholder: 'Name, (555) 555-5555',           type: 'text' },
+      { key: 'currentAddress',        label: '* Current Address',                  placeholder: '123 Main St, City, State 12345', type: 'text' },
+      { key: 'currentAddressYears',   label: '* Years at Current Address',         placeholder: '0',                              type: 'number', min: 0, max: 50 },
+      { key: 'previousAddress',       label: '* Previous Address (if < 2 yrs)',    placeholder: '456 Oak Ave, City, State 12345', type: 'text' },
+      { key: 'rentOrOwn',             label: '* Rent or Own',                      placeholder: 'Select...',                      type: 'select', options: ['Rent', 'Own', 'Living with family', 'Other'] },
+      { key: 'monthlyHousingPayment', label: '* Monthly Housing Payment',          placeholder: '$0',                             type: 'currency' },
+      { key: 'landlordContact',       label: '* Landlord Contact (if renting)',    placeholder: 'Name, (555) 555-5555',           type: 'text' },
     ],
   },
   {
@@ -70,13 +72,13 @@ const sections: Section[] = [
     title: 'Employment History',
     color: '#92b4a7',
     fields: [
-      { key: 'employerName',     label: 'Current Employer Name',          placeholder: 'Company Name',                          type: 'text' },
-      { key: 'employerAddress',  label: 'Employer Address',               placeholder: '789 Business Blvd, City, State 12345',  type: 'text' },
-      { key: 'jobTitle',         label: 'Job Title',                      placeholder: 'e.g. Software Engineer',                type: 'text' },
-      { key: 'employmentType',   label: 'Employment Type',                placeholder: 'Select...',                             type: 'select', options: ['Full-time', 'Part-time', 'Self-employed', 'Contract', 'Seasonal'] },
-      { key: 'startDate',        label: 'Start Date',                     placeholder: '',                                      type: 'date' },
-      { key: 'previousEmployer', label: 'Previous Employer (if < 2 yrs)', placeholder: 'Company Name',                         type: 'text' },
-      { key: 'employmentGaps',   label: 'Explanation of Any Employment Gaps', placeholder: 'Describe any gaps...',             type: 'textarea' },
+      { key: 'employerName',     label: '* Current Employer Name',          placeholder: 'Company Name',                          type: 'text' },
+      { key: 'employerAddress',  label: '* Employer Address',               placeholder: '789 Business Blvd, City, State 12345',  type: 'text' },
+      { key: 'jobTitle',         label: '* Job Title',                      placeholder: 'e.g. Software Engineer',                type: 'text' },
+      { key: 'employmentType',   label: '* Employment Type',                placeholder: 'Select...',                             type: 'select', options: ['Full-time', 'Part-time', 'Self-employed', 'Contract', 'Seasonal'] },
+      { key: 'startDate',        label: '* Start Date',                     placeholder: '',                                      type: 'date' },
+      { key: 'previousEmployer', label: '* Previous Employer (if < 2 yrs)', placeholder: 'Company Name',                         type: 'text' },
+      { key: 'employmentGaps',   label: '* Explanation of Any Employment Gaps', placeholder: 'Describe any gaps...',             type: 'textarea' },
     ],
   },
   {
@@ -86,11 +88,11 @@ const sections: Section[] = [
     color: '#bdc4a7',
     fields: [
       { key: 'baseSalary',        label: 'Base Salary / Wages (annual)',   placeholder: '$0',  type: 'currency' },
-      { key: 'bonuses',           label: 'Bonuses & Overtime (annual)',    placeholder: '$0',  type: 'currency' },
-      { key: 'selfEmployIncome',  label: 'Self-Employment Income (net annual)', placeholder: '$0', type: 'currency' },
-      { key: 'rentalIncome',      label: 'Rental Income (monthly)',        placeholder: '$0',  type: 'currency' },
-      { key: 'otherIncome',       label: 'Other Income (monthly)',         placeholder: '$0',  type: 'currency' },
-      { key: 'otherIncomeSource', label: 'Other Income Source',            placeholder: 'e.g. Alimony, disability, retirement', type: 'text' },
+      { key: 'bonuses',           label: '* Bonuses & Overtime (annual)',    placeholder: '$0',  type: 'currency' },
+      { key: 'selfEmployIncome',  label: '* Self-Employment Income (net annual)', placeholder: '$0', type: 'currency' },
+      { key: 'rentalIncome',      label: '* Rental Income (monthly)',        placeholder: '$0',  type: 'currency' },
+      { key: 'otherIncome',       label: '* Other Income (monthly)',         placeholder: '$0',  type: 'currency' },
+      { key: 'otherIncomeSource', label: '* Other Income Source',            placeholder: 'e.g. Alimony, disability, retirement', type: 'text' },
     ],
   },
   {
@@ -99,13 +101,13 @@ const sections: Section[] = [
     title: 'Assets',
     color: '#92b4a7',
     fields: [
-      { key: 'checkingBalance',   label: 'Checking Account Balance',  placeholder: '$0',  type: 'currency' },
+      { key: 'checkingBalance',   label: '* Checking Account Balance',  placeholder: '$0',  type: 'currency' },
       { key: 'savingsBalance',    label: 'Savings Account Balance',   placeholder: '$0',  type: 'currency' },
-      { key: 'retirementBalance', label: 'Retirement Accounts Total (401k, IRA)', placeholder: '$0', type: 'currency' },
-      { key: 'investmentBalance', label: 'Investment Accounts Total', placeholder: '$0',  type: 'currency' },
-      { key: 'giftFunds',         label: 'Gift Funds',                placeholder: '$0',  type: 'currency' },
-      { key: 'realEstateValue',   label: 'Real Estate Value',         placeholder: '$0',  type: 'currency' },
-      { key: 'otherAssets',       label: 'Other Assets Description',  placeholder: 'e.g. Vehicles, business equity, life insurance cash value', type: 'textarea' },
+      { key: 'retirementBalance', label: '* Retirement Accounts Total (401k, IRA)', placeholder: '$0', type: 'currency' },
+      { key: 'investmentBalance', label: '* Investment Accounts Total', placeholder: '$0',  type: 'currency' },
+      { key: 'giftFunds',         label: '* Gift Funds',                placeholder: '$0',  type: 'currency' },
+      { key: 'realEstateValue',   label: '* Real Estate Value',         placeholder: '$0',  type: 'currency' },
+      { key: 'otherAssets',       label: '* Other Assets Description',  placeholder: 'e.g. Vehicles, business equity, life insurance cash value', type: 'textarea' },
     ],
   },
   {
@@ -115,11 +117,11 @@ const sections: Section[] = [
     color: '#bf8b85',
     note: 'Your lender will typically pull these automatically via a soft credit check — this does not affect your score. Fill in what you know.',
     fields: [
-      { key: 'creditCardPayment',  label: 'Credit Card Min. Payments (monthly)', placeholder: '$0', type: 'currency' },
-      { key: 'studentLoanPayment', label: 'Student Loan Payment (monthly)',       placeholder: '$0', type: 'currency' },
-      { key: 'autoLoanPayment',    label: 'Auto Loan Payment (monthly)',          placeholder: '$0', type: 'currency' },
-      { key: 'childSupport',       label: 'Child Support / Alimony (monthly)',    placeholder: '$0', type: 'currency' },
-      { key: 'otherDebt',          label: 'Other Monthly Debt Obligations',       placeholder: '$0', type: 'currency' },
+      { key: 'creditCardPayment',  label: '* Credit Card Min. Payments (monthly)', placeholder: '$0', type: 'currency' },
+      { key: 'studentLoanPayment', label: '* Student Loan Payment (monthly)',       placeholder: '$0', type: 'currency' },
+      { key: 'autoLoanPayment',    label: '* Auto Loan Payment (monthly)',          placeholder: '$0', type: 'currency' },
+      { key: 'childSupport',       label: '* Child Support / Alimony (monthly)',    placeholder: '$0', type: 'currency' },
+      { key: 'otherDebt',          label: '* Other Monthly Debt Obligations',       placeholder: '$0', type: 'currency' },
     ],
   },
   {
@@ -129,18 +131,21 @@ const sections: Section[] = [
     color: '#3e78b2',
     note: 'These are required yes/no legal disclosures on every mortgage application.',
     fields: [
-      { key: 'outstandingJudgments', label: 'Any outstanding judgments against you?',        placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
-      { key: 'bankruptcy',           label: 'Filed for bankruptcy in the past 7 years?',     placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
-      { key: 'foreclosure',          label: 'Property foreclosed in the past 7 years?',      placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
-      { key: 'lawsuit',              label: 'Currently a party to a lawsuit?',               placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
-      { key: 'cosigner',             label: 'Co-signer or guarantor on any other loan?',     placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
-      { key: 'citizenship',          label: 'U.S. citizen or permanent resident?',           placeholder: 'Select...', type: 'select', options: ['Yes', 'No'] },
-      { key: 'primaryResidence',     label: 'Will this be your primary residence?',          placeholder: 'Select...', type: 'select', options: ['Yes', 'No'] },
+      { key: 'outstandingJudgments', label: '* Any outstanding judgments against you?',        placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
+      { key: 'bankruptcy',           label: '* Filed for bankruptcy in the past 7 years?',     placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
+      { key: 'foreclosure',          label: '* Property foreclosed in the past 7 years?',      placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
+      { key: 'lawsuit',              label: '* Currently a party to a lawsuit?',               placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
+      { key: 'cosigner',             label: '* Co-signer or guarantor on any other loan?',     placeholder: 'Select...', type: 'select', options: ['No', 'Yes'] },
+      { key: 'citizenship',          label: '* U.S. citizen or permanent resident?',           placeholder: 'Select...', type: 'select', options: ['Yes', 'No'] },
+      { key: 'primaryResidence',     label: '* Will this be your primary residence?',          placeholder: 'Select...', type: 'select', options: ['Yes', 'No'] },
     ],
   },
 ];
 
 const STORAGE_KEY = 'homeyLoanApplication';
+
+// Keys that are synced two-way with homeyProfile
+const PROFILE_LINKED_KEYS = ['fullName', 'email', 'baseSalary', 'savingsBalance'] as const;
 
 // --- Formatters ---
 
@@ -177,15 +182,37 @@ const selectClass = inputClass + ' cursor-pointer';
 
 interface Props {
   onBack: () => void;
+  onNext: () => void;
 }
 
-export function LoanApplicationView({ onBack }: Props) {
-  const [openSection, setOpenSection] = useState<string | null>('personal');
+export function LoanApplicationView({ onBack, onNext }: Props) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setFormData(JSON.parse(saved) as Record<string, string>);
+    void (async () => {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const base: Record<string, string> = saved ? (JSON.parse(saved) as Record<string, string>) : {};
+
+      // Seed profile-linked fields from homeyProfile / session
+      const profile = getUserProfile();
+      const session = await fetchSessionUser();
+
+      if (profile) {
+        base['fullName'] = base['fullName'] || profile.name;
+        base['baseSalary'] = base['baseSalary'] || (profile.yearlyIncome ? formatCurrency(profile.yearlyIncome) : '');
+        base['savingsBalance'] = base['savingsBalance'] || (profile.savingsTotal ? formatCurrency(profile.savingsTotal) : '');
+      }
+      if (session) {
+        base['email'] = base['email'] || session.email;
+        if (!base['fullName']) {
+          base['fullName'] = `${session.firstName} ${session.lastName}`.trim();
+        }
+      }
+
+      setFormData(base);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+    })();
   }, []);
 
   const handleChange = (key: string, raw: string, type: FieldType) => {
@@ -193,6 +220,20 @@ export function LoanApplicationView({ onBack }: Props) {
     const updated = { ...formData, [key]: value };
     setFormData(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    // Sync back to homeyProfile for linked fields
+    const profile = getUserProfile();
+    if (profile) {
+      if (key === 'fullName') {
+        saveUserProfile({ ...profile, name: value });
+      } else if (key === 'baseSalary') {
+        const digits = value.replace(/[^0-9]/g, '');
+        saveUserProfile({ ...profile, yearlyIncome: digits });
+      } else if (key === 'savingsBalance') {
+        const digits = value.replace(/[^0-9]/g, '');
+        saveUserProfile({ ...profile, savingsTotal: digits });
+      }
+    }
   };
 
   const renderField = (field: Field) => {
@@ -269,12 +310,13 @@ export function LoanApplicationView({ onBack }: Props) {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-white">Loan Application</h1>
-          <p className="text-white/60 text-sm mt-0.5">Practice filling this out — your answers are saved locally</p>
+          <p className="text-white/60 text-sm mt-0.5">Practice filling this out!</p>
+          <p className="text-white/60 text-sm">*These fields are only saved locally</p>
         </div>
       </div>
 
       {/* Accordion sections */}
-      <div className="flex flex-col gap-3 w-full">
+      <div className="flex flex-col gap-3 w-full mb-4">
         {sections.map((section, i) => {
           const isOpen = openSection === section.id;
           return (
@@ -338,6 +380,28 @@ export function LoanApplicationView({ onBack }: Props) {
           );
         })}
       </div>
+      {/* Bottom CTA */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="glass rounded-2xl p-8 flex flex-col md:flex-row items-center gap-6"
+      >
+        <div className="flex-1">
+          <h3 className="text-white font-bold text-2xl mb-2">Ready to gather your documents?</h3>
+          <p className="text-white/70 text-base leading-relaxed">
+            Once your application is filled out, the next step is collecting the supporting documents your lender will need to verify your information.
+          </p>
+        </div>
+        <button
+          onClick={onNext}
+          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
+          style={{ backgroundColor: '#3e78b260' }}
+        >
+          Next: Gather Documents
+          <ArrowRight className="w-5 h-5" />
+        </button>
+      </motion.div>
     </motion.div>
   );
 }
