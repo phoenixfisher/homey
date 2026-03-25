@@ -141,6 +141,13 @@ app.MapPost("/api/auth/login", (LoginRequest request, IDbConnection db, HttpCont
         LIMIT 1;
         """;
 
+    const string updateLastLoginSql = """
+        UPDATE users
+        SET last_logged_in_at = UTC_TIMESTAMP()
+        WHERE user_id = @user_id
+        LIMIT 1;
+        """;
+
     using (db)
     {
         db.Open();
@@ -175,6 +182,15 @@ app.MapPost("/api/auth/login", (LoginRequest request, IDbConnection db, HttpCont
         if (!isValid)
         {
             return Results.Unauthorized();
+        }
+
+        reader.Close();
+
+        using (var updateCmd = db.CreateCommand())
+        {
+            updateCmd.CommandText = updateLastLoginSql;
+            updateCmd.Parameters.Add(new MySqlParameter("@user_id", userId));
+            updateCmd.ExecuteNonQuery();
         }
 
         var response = new AuthResponse(userId, username, email, firstName, lastName);
