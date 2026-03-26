@@ -158,45 +158,6 @@ export function DashboardPage() {
   const downPaymentProgress = downPaymentTarget > 0 ? (savings / downPaymentTarget) * 100 : 0;
   const monthlyBudget = monthlyIncome - monthlyExpenses;
 
-  if (isProfileLoaded && !profile) {
-    return (
-      <AppLayout>
-        <MainNav
-          active="dashboard"
-          isLoggedIn={isAuthenticated}
-          rightContent={(
-            <AuthHeaderActions
-              isLoggedIn={isAuthenticated}
-              firstName={sessionUser?.firstName ?? null}
-              onAuthClick={handleLogout}
-            />
-          )}
-        />
-        <main className="flex-1 p-4 md:p-8 relative">
-          <div className="max-w-3xl mx-auto relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass rounded-3xl p-8 md:p-10 text-center"
-            >
-              <h1 className="text-3xl md:text-4xl text-white mb-4">Complete onboarding first</h1>
-              <p className="text-white/75 max-w-2xl mx-auto mb-6">
-                Your dashboard uses the profile created on the Home page. Add your income, savings,
-                and target home price there first, then come back here to track your progress.
-              </p>
-              <button
-                onClick={() => void navigate('/')}
-                className="px-6 py-3 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all"
-              >
-                Go To Home
-              </button>
-            </motion.div>
-          </div>
-        </main>
-      </AppLayout>
-    );
-  }
-
   if (!profile) return null;
 
   return (

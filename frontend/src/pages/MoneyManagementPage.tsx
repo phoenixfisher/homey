@@ -134,45 +134,6 @@ export function MoneyManagementPage() {
     void navigate('/');
   };
 
-  if (isProfileLoaded && !profile) {
-    return (
-      <AppLayout>
-        <MainNav
-          active="money-management"
-          isLoggedIn={isAuthenticated}
-          rightContent={(
-            <AuthHeaderActions
-              isLoggedIn={isAuthenticated}
-              firstName={sessionUser?.firstName ?? null}
-              onAuthClick={handleLogout}
-            />
-          )}
-        />
-        <main className="flex-1 p-4 md:p-8 relative">
-          <div className="max-w-3xl mx-auto relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass rounded-3xl p-8 md:p-10 text-center"
-            >
-              <h1 className="text-3xl md:text-4xl text-white mb-4">Set up your profile first</h1>
-              <p className="text-white/75 max-w-2xl mx-auto mb-6">
-                Money Management uses your onboarding details to calculate your monthly cushion,
-                savings progress, and home budget. Start on the Home page to enter that information.
-              </p>
-              <button
-                onClick={() => void navigate('/')}
-              className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
-            >
-                Go To Home
-              </button>
-            </motion.div>
-          </div>
-        </main>
-      </AppLayout>
-    );
-  }
-
   if (!profile) return null;
 
   const recommendations = [
