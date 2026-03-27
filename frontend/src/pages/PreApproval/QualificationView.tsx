@@ -11,7 +11,20 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  Save,
+  Cloud,
+  AlertCircle,
+  History,
 } from 'lucide-react';
+import { fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn } from '@/lib/auth';
+import { fetchUserProfile } from '@/lib/profile';
+import {
+  fetchQualificationSnapshot,
+  saveQualificationSnapshot,
+  formatSavedAt,
+  type QualificationSnapshot,
+} from '@/lib/preapproval';
+import { LoginPromptModal } from '@/components/LoginPromptModal';
 
 interface Profile {
   name?: string;
@@ -30,21 +43,111 @@ interface Props {
 export function QualificationView({ onBack, onNext }: Props) {
   const [profile, setProfile] = useState<Profile>({});
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [savedSnapshot, setSavedSnapshot] = useState<QualificationSnapshot | null>(null);
+  const [showSnapshotDropdown, setShowSnapshotDropdown] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('homeyProfile');
-    if (saved) setProfile(JSON.parse(saved) as Profile);
+    const localProfile = getUserProfile();
+    const initialLoggedIn = getIsLoggedIn() || !!localProfile;
+    setIsLoggedIn(initialLoggedIn);
+
+    if (localProfile) {
+      setProfile(localProfile);
+    } else {
+      const saved = localStorage.getItem('homeyProfile');
+      if (saved) {
+        try {
+          setProfile(JSON.parse(saved) as Profile);
+        } catch {
+          // ignore invalid saved profile
+        }
+      }
+    }
+
+    void (async () => {
+      const session = await fetchSessionUser();
+      if (session) {
+        const profileFromApi = await fetchUserProfile();
+        if (profileFromApi) {
+          const mappedProfile: Profile = {
+            name: `${profileFromApi.firstName} ${profileFromApi.lastName}`.trim(),
+            creditScore: profileFromApi.creditScore?.toString() ?? '',
+            monthlyIncome: profileFromApi.monthlyIncome?.toString() ?? '',
+            monthlyExpenses: profileFromApi.monthlyExpenses?.toString() ?? '',
+            savingsTotal: profileFromApi.totalSavings?.toString() ?? '',
+            desiredHomePrice: profileFromApi.desiredHomePrice?.toString() ?? '',
+          };
+          setProfile(mappedProfile);
+          saveUserProfile({
+            name: mappedProfile.name,
+            desiredHomePrice: mappedProfile.desiredHomePrice,
+            creditScore: mappedProfile.creditScore,
+            monthlyIncome: mappedProfile.monthlyIncome,
+            yearlyIncome: '',
+            savingsTotal: mappedProfile.savingsTotal,
+            monthlyExpenses: mappedProfile.monthlyExpenses,
+            industry: profileFromApi.industryOfWork ?? '',
+          });
+        }
+
+        setIsLoggedIn(true);
+        try {
+          const snap = await fetchQualificationSnapshot();
+          if (snap) setSavedSnapshot(snap);
+        } catch {
+          // silently ignore
+        }
+      }
+    })();
   }, []);
+
+  const handleSaveSnapshot = async () => {
+    if (!isLoggedIn) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    setSaveStatus('saving');
+    try {
+      const creditScore = parseInt(profile.creditScore ?? '0') || undefined;
+      await saveQualificationSnapshot({
+        dti: dti ?? undefined,
+        creditScore: creditScore as number | undefined,
+        monthlyIncome: monthlyIncome > 0 ? monthlyIncome : undefined,
+        monthlyExpenses: monthlyExpenses > 0 ? monthlyExpenses : undefined,
+        savings: savings > 0 ? savings : undefined,
+        downPaymentPct: downPaymentPercent ?? undefined,
+      });
+      const snap: QualificationSnapshot = {
+        dti: dti ?? undefined,
+        creditScore: creditScore,
+        monthlyIncome: monthlyIncome > 0 ? monthlyIncome : undefined,
+        monthlyExpenses: monthlyExpenses > 0 ? monthlyExpenses : undefined,
+        savings: savings > 0 ? savings : undefined,
+        downPaymentPct: downPaymentPercent ?? undefined,
+        savedAt: new Date().toISOString(),
+      };
+      setSavedSnapshot(snap);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
 
   const monthlyIncome = parseFloat(profile.monthlyIncome ?? '0');
   const monthlyExpenses = parseFloat(profile.monthlyExpenses ?? '0');
   const savings = parseFloat(profile.savingsTotal ?? '0');
   const desiredPrice = parseFloat(profile.desiredHomePrice ?? '0');
-  const creditScore = parseInt(profile.creditScore ?? '0');
+  const creditScore = Number(profile.creditScore);
+  const safeCreditScore = Number.isFinite(creditScore) && creditScore > 0 ? creditScore : 0;
 
   const dti = monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : null;
   const downPaymentNeeded = desiredPrice * 0.2;
-  const downPaymentPercent = downPaymentNeeded > 0 ? (savings / downPaymentNeeded) * 100 : null;
+  const downPaymentPercent = desiredPrice > 0 ? (savings / desiredPrice) * 100 : null;
 
   const getDTIColor = (d: number) => {
     if (d <= 36) return { color: '#bdc4a7', label: 'Excellent', desc: 'Well within lender limits' };
@@ -60,7 +163,7 @@ export function QualificationView({ onBack, onNext }: Props) {
   };
 
   const dtiInfo = dti !== null ? getDTIColor(dti) : null;
-  const creditInfo = creditScore > 0 ? getCreditColor(creditScore) : null;
+  const creditInfo = safeCreditScore > 0 ? getCreditColor(safeCreditScore) : null;
 
   const steps = [
     {
@@ -97,8 +200,8 @@ export function QualificationView({ onBack, onNext }: Props) {
       title: 'Credit Review',
       what: 'The lender reviews your full credit report — score, payment history, open accounts, and any derogatory marks.',
       good: 'A score of 620+ is typically the minimum. 740+ gets the best rates.',
-      personal: creditScore > 0
-        ? `Your credit score is ${creditScore} — ${creditInfo!.label}.`
+      personal: safeCreditScore > 0
+        ? `Your credit score is ${safeCreditScore} — ${creditInfo!.label}.`
         : null,
       highlight: creditInfo,
     },
@@ -117,25 +220,105 @@ export function QualificationView({ onBack, onNext }: Props) {
   ];
 
   return (
+    <>
+    <LoginPromptModal
+      open={showLoginPrompt}
+      onClose={() => setShowLoginPrompt(false)}
+      message="Log in to save your qualification snapshot to your account."
+    />
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex-1 flex flex-col relative z-10 px-4 md:px-10 py-8"
     >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-4">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-white hover:bg-white/20 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-white">Qualification</h1>
-          <p className="text-white/60 text-sm mt-0.5">What your lender is calculating behind the scenes</p>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-4">
+        <div className="flex items-center gap-4 flex-1">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-white hover:bg-white/20 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-white">Qualification</h1>
+            <p className="text-white/60 text-sm mt-0.5">What your lender is calculating behind the scenes</p>
+          </div>
+        </div>
+
+        {/* Save snapshot button */}
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => void handleSaveSnapshot()}
+            disabled={saveStatus === 'saving'}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shrink-0
+              ${saveStatus === 'saved' ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300' :
+                saveStatus === 'error' ? 'bg-[#bf8b85]/30 border border-[#bf8b85]/40 text-[#bf8b85]' :
+                'glass text-white hover:bg-white/20'}`}
+          >
+            {saveStatus === 'saving' ? (
+              <><Cloud className="w-4 h-4 animate-pulse" /> Saving...</>
+            ) : saveStatus === 'saved' ? (
+              <><CheckCircle className="w-4 h-4" /> Saved!</>
+            ) : saveStatus === 'error' ? (
+              <><AlertCircle className="w-4 h-4" /> Error saving</>
+            ) : (
+              <><Save className="w-4 h-4" /> {savedSnapshot ? 'Resave Qualification' : 'Save Qualification'}</>
+            )}
+          </button>
+          {savedSnapshot?.savedAt && (
+            <p className="text-white/40 text-xs">Last saved: {formatSavedAt(savedSnapshot.savedAt)}</p>
+          )}
+          {!isLoggedIn && (
+            <p className="text-white/40 text-xs">Log in to save to your account</p>
+          )}
         </div>
       </div>
+
+      {/* Saved Snapshot Dropdown */}
+      {savedSnapshot && (
+        <div className="mb-4">
+          <button
+            onClick={() => setShowSnapshotDropdown(v => !v)}
+            className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-white/80 hover:bg-white/10 transition-all text-sm w-full sm:w-auto"
+          >
+            <History className="w-4 h-4 text-[#bdc4a7]" />
+            <span>Last Saved Snapshot — {formatSavedAt(savedSnapshot.savedAt)}</span>
+            {showSnapshotDropdown
+              ? <ChevronUp className="w-4 h-4 ml-auto text-white/40" />
+              : <ChevronDown className="w-4 h-4 ml-auto text-white/40" />}
+          </button>
+          <AnimatePresence>
+            {showSnapshotDropdown && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2 glass rounded-2xl p-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {[
+                    { label: 'DTI', value: savedSnapshot.dti != null ? `${Number(savedSnapshot.dti).toFixed(1)}%` : 'N/A' },
+                    { label: 'Credit Score', value: savedSnapshot.creditScore ?? 'N/A' },
+                    { label: 'Monthly Income', value: savedSnapshot.monthlyIncome != null ? `$${Number(savedSnapshot.monthlyIncome).toLocaleString()}` : 'N/A' },
+                    { label: 'Monthly Expenses', value: savedSnapshot.monthlyExpenses != null ? `$${Number(savedSnapshot.monthlyExpenses).toLocaleString()}` : 'N/A' },
+                    { label: 'Savings', value: savedSnapshot.savings != null ? `$${Number(savedSnapshot.savings).toLocaleString()}` : 'N/A' },
+                    { label: 'Down Payment %', value: savedSnapshot.downPaymentPct != null ? `${Number(savedSnapshot.downPaymentPct).toFixed(1)}%` : 'N/A' },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex flex-col gap-0.5">
+                      <p className="text-white/40 text-xs uppercase tracking-wider">{label}</p>
+                      <p className="text-white font-semibold text-base">{String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
 
       {/* Accordion steps */}
       <div className="flex flex-col gap-3 w-full">
@@ -183,12 +366,12 @@ export function QualificationView({ onBack, onNext }: Props) {
                     <div className="px-8 pt-2 pb-8 flex flex-col gap-4">
                       <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-1">
-                          <p className="text-white/50 text-xs uppercase tracking-wider font-semibold">What they check</p>
-                          <p className="text-white/80 text-base leading-relaxed">{step.what}</p>
+                          <p className="text-white/50 text-sm uppercase tracking-wider font-semibold">What they check</p>
+                          <p className="text-white/80 text-lg leading-relaxed">{step.what}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <p className="text-white/50 text-xs uppercase tracking-wider font-semibold">What good looks like</p>
-                          <p className="text-white/80 text-base leading-relaxed">{step.good}</p>
+                          <p className="text-white/50 text-sm uppercase tracking-wider font-semibold">What good looks like</p>
+                          <p className="text-white/80 text-lg leading-relaxed">{step.good}</p>
                         </div>
                       </div>
 
@@ -224,7 +407,7 @@ export function QualificationView({ onBack, onNext }: Props) {
                           style={{ backgroundColor: step.color + '25', borderLeft: `3px solid ${step.color}` }}
                         >
                           <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: step.color }} />
-                          <p className="text-white/90">{step.personal}</p>
+                          <p className="text-white/90 text-base">{step.personal}</p>
                         </div>
                       )}
                     </div>
@@ -259,5 +442,6 @@ export function QualificationView({ onBack, onNext }: Props) {
         </button>
       </motion.div>
     </motion.div>
+    </>
   );
 }

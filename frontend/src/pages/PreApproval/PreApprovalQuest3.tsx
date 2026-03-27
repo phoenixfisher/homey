@@ -170,7 +170,7 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
                       )}
                     </div>
                     <span
-                      className={`text-sm transition-colors ${
+                      className={`text-base transition-colors ${
                         checkedDocs[i] ? 'text-white line-through text-white/50' : 'text-white/80 group-hover:text-white'
                       }`}
                     >
@@ -188,7 +188,7 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
                 className="glass rounded-xl p-3 flex items-center gap-2 border border-[#bdc4a7]/30"
               >
                 <CheckCircle className="w-4 h-4 text-[#bdc4a7] flex-shrink-0" />
-                <p className="text-[#bdc4a7] text-sm">All documents ready! You're well-prepared.</p>
+                <p className="text-[#bdc4a7] text-base">All documents ready! You're well-prepared.</p>
               </motion.div>
             )}
           </div>
@@ -215,7 +215,7 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
                 <div className="text-3xl font-bold text-white">
                   {isNoCredit ? 'N/A' : profile.creditScore}
                 </div>
-                <div className={`text-xs font-semibold ${creditColor}`}>{creditLabel}</div>
+                <div className={`text-sm font-semibold ${creditColor}`}>{creditLabel}</div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full max-w-lg">
@@ -238,7 +238,7 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
               <Info className="w-5 h-5 text-[#92b4a7] flex-shrink-0 mt-0.5" />
               <div>
                 <div className="text-white font-medium mb-1">Personalized Tip</div>
-                <p className="text-white/70 text-sm">{creditTip}</p>
+                <p className="text-white/70 text-base">{creditTip}</p>
               </div>
             </div>
           </div>
@@ -256,14 +256,14 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
               <>
                 <div className="glass rounded-2xl p-6 mb-4 text-center">
                   <Calculator className="w-8 h-8 text-[#bdc4a7] mx-auto mb-3" />
-                  <div className="text-white/60 text-sm mb-2">Estimated Loan Range</div>
+                  <div className="text-white/60 text-base mb-2">Estimated Loan Range</div>
                   <div className="text-3xl font-bold text-white mb-1">
                     {formatCurrency(loanLow)} – {formatCurrency(loanHigh)}
                   </div>
-                  <div className="text-white/50 text-xs mb-5">Based on 43% DTI limit and 6% interest rate</div>
+                  <div className="text-white/50 text-sm mb-5">Based on 43% DTI limit and 6% interest rate</div>
 
                   <div className="border-t border-white/10 pt-4">
-                    <div className="text-white/60 text-sm mb-1">Estimated Monthly Payment</div>
+                    <div className="text-white/60 text-base mb-1">Estimated Monthly Payment</div>
                     <div className="text-2xl font-bold text-[#92b4a7]">
                       ~{formatCurrency(estimatedMonthlyPayment)}/mo
                     </div>
@@ -272,7 +272,7 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
 
                 <div className="glass rounded-xl p-4 flex items-start gap-3 border border-yellow-400/20">
                   <Info className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-white/70 text-sm">
+                  <p className="text-white/70 text-base">
                     This is an estimate only, not a guarantee of loan approval. Actual amounts depend on
                     your credit score, lender criteria, property type, and current interest rates.
                     Always consult a licensed mortgage professional for an official pre-approval.
@@ -311,21 +311,21 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="glass rounded-2xl p-5 text-center border border-white/10">
                 <FileText className="w-6 h-6 text-[#bdc4a7] mx-auto mb-2" />
-                <div className="text-white/60 text-xs mb-1">Documents Ready</div>
+                <div className="text-white/60 text-sm mb-1">Documents Ready</div>
                 <div className="text-2xl font-bold text-white">
                   {docsChecked} / {DOCUMENTS.length}
                 </div>
               </div>
               <div className="glass rounded-2xl p-5 text-center border border-white/10">
                 <CreditCard className="w-6 h-6 text-[#92b4a7] mx-auto mb-2" />
-                <div className="text-white/60 text-xs mb-1">Credit Score</div>
+                <div className="text-white/60 text-sm mb-1">Credit Score</div>
                 <div className="text-2xl font-bold text-white">
                   {isNoCredit ? 'N/A' : profile.creditScore}
                 </div>
               </div>
               <div className="glass rounded-2xl p-5 text-center border border-white/10">
                 <Calculator className="w-6 h-6 text-[#bf8b85] mx-auto mb-2" />
-                <div className="text-white/60 text-xs mb-1">Est. Loan Range</div>
+                <div className="text-white/60 text-sm mb-1">Est. Loan Range</div>
                 <div className="text-lg font-bold text-white leading-tight">
                   {maxLoan > 0
                     ? `${formatCurrency(loanLow)}–${formatCurrency(loanHigh)}`
@@ -336,7 +336,7 @@ export function PreApprovalQuest3({ profile, onComplete }: PreApprovalQuest3Prop
 
             <div className="glass rounded-2xl p-5 mb-6 flex items-start gap-3 border border-[#92b4a7]/30">
               <Info className="w-5 h-5 text-[#92b4a7] flex-shrink-0 mt-0.5" />
-              <p className="text-white/70 text-sm">
+              <p className="text-white/70 text-base">
                 Your next step is to contact a lender with these documents. Many banks and credit
                 unions offer free pre-approval consultations. Bring your documents and ask about
                 current rates.

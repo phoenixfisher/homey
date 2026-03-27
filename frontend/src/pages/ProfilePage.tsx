@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
-import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout } from '@/lib/auth';
+import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout, saveUserProfile } from '@/lib/auth';
 import { fetchUserProfile, updateUserProfile, type UpdateUserProfileRequest, type UserProfile } from '@/lib/profile';
 
 const industries = [
@@ -89,6 +89,17 @@ export function ProfilePage() {
           targetZipCode: loaded.targetZipCode ?? '',
           industryOfWork: loaded.industryOfWork ?? '',
         });
+
+        saveUserProfile({
+          name: `${loaded.firstName} ${loaded.lastName}`.trim(),
+          desiredHomePrice: loaded.desiredHomePrice?.toString() ?? '',
+          creditScore: loaded.creditScore?.toString() ?? '',
+          monthlyIncome: loaded.monthlyIncome?.toString() ?? '',
+          yearlyIncome: loaded.yearlyIncome?.toString() ?? '',
+          savingsTotal: loaded.totalSavings?.toString() ?? '',
+          monthlyExpenses: loaded.monthlyExpenses?.toString() ?? '',
+          industry: loaded.industryOfWork ?? '',
+        });
       } catch (err) {
         console.error(err);
         setError('Unable to load your profile right now.');
@@ -143,6 +154,18 @@ export function ProfilePage() {
     } finally {
       setSaving(false);
     }
+
+    // Mirror server profile data to localStorage so preapproval flows read the most recent values.
+    saveUserProfile({
+      name: `${form.firstName} ${form.lastName}`.trim(),
+      desiredHomePrice: form.desiredHomePrice,
+      creditScore: form.creditScore,
+      monthlyIncome: form.monthlyIncome,
+      yearlyIncome: profile?.yearlyIncome?.toString() ?? '',
+      savingsTotal: form.totalSavings,
+      monthlyExpenses: form.monthlyExpenses,
+      industry: form.industryOfWork,
+    });
   };
 
   return (

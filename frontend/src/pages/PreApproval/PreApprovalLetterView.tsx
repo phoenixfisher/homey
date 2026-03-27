@@ -6,8 +6,17 @@ import {
   Users,
   Home,
   CheckCircle,
+  Star,
+  Cloud,
+  AlertCircle,
 } from 'lucide-react';
 import { fetchSessionUser } from '@/lib/auth';
+import {
+  fetchPreApprovalCompletion,
+  markPreApprovalComplete,
+  formatSavedAt,
+} from '@/lib/preapproval';
+import { LoginPromptModal } from '@/components/LoginPromptModal';
 
 interface Profile {
   name?: string;
@@ -36,21 +45,52 @@ function getExpirationDate(): string {
 export function PreApprovalLetterView({ onBack }: Props) {
   const [profile, setProfile] = useState<Profile>({});
   const [sessionName, setSessionName] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completedAt, setCompletedAt] = useState<string | null>(null);
+  const [completeStatus, setCompleteStatus] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('homeyProfile');
     if (saved) setProfile(JSON.parse(saved) as Profile);
 
-    // Also pull income summary from GatherDocuments if available
     const gatherSaved = localStorage.getItem('homeyGatherDocuments');
     void (async () => {
       const user = await fetchSessionUser();
       if (user) {
+        setIsLoggedIn(true);
         setSessionName(`${user.firstName} ${user.lastName}`.trim());
+        try {
+          const completion = await fetchPreApprovalCompletion();
+          if (completion?.completed) {
+            setIsCompleted(true);
+            setCompletedAt(formatSavedAt(completion.completedAt));
+          }
+        } catch {
+          // silently ignore
+        }
       }
     })();
-    void gatherSaved; // suppress unused warning
+    void gatherSaved;
   }, []);
+
+  const handleMarkComplete = async () => {
+    if (!isLoggedIn) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    setCompleteStatus('saving');
+    try {
+      await markPreApprovalComplete();
+      setIsCompleted(true);
+      setCompletedAt(formatSavedAt(new Date().toISOString()));
+      setCompleteStatus('done');
+    } catch {
+      setCompleteStatus('error');
+      setTimeout(() => setCompleteStatus('idle'), 3000);
+    }
+  };
 
   // Income/expenses: prefer homeyProfile, fall back to income summary stored in gather docs page
   const incomeSummaryRaw = localStorage.getItem('homeyGatherDocuments');
@@ -102,6 +142,12 @@ export function PreApprovalLetterView({ onBack }: Props) {
   ];
 
   return (
+    <>
+    <LoginPromptModal
+      open={showLoginPrompt}
+      onClose={() => setShowLoginPrompt(false)}
+      message="Log in to mark your Pre-Approval milestone as complete on your account."
+    />
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -182,6 +228,51 @@ export function PreApprovalLetterView({ onBack }: Props) {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="border-t border-white/10" />
+
+          {/* Mark milestone complete */}
+          <div className="p-6 flex flex-col gap-3">
+            <h2 className="text-white font-bold text-xl">Ready? Mark this milestone done</h2>
+            <p className="text-white/60 text-sm leading-relaxed">
+              Once you've contacted a real lender and received your official pre-approval, mark this milestone complete on your account.
+            </p>
+
+            {isCompleted && completeStatus === 'idle' && (
+              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30">
+                <Star className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <p className="text-emerald-300 font-semibold text-sm">Pre-Approval Complete!</p>
+                  {completedAt && (
+                    <p className="text-emerald-400/60 text-xs">{completedAt}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => void handleMarkComplete()}
+              disabled={completeStatus === 'saving'}
+              className={`flex items-center justify-center gap-3 w-full py-4 rounded-2xl font-bold text-base transition-all
+                ${completeStatus === 'error'
+                  ? 'bg-[#bf8b85]/30 border border-[#bf8b85]/40 text-[#bf8b85]'
+                  : isCompleted
+                  ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:-translate-y-0.5'
+                  : 'bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:-translate-y-0.5'}`}
+            >
+              {completeStatus === 'saving' ? (
+                <><Cloud className="w-5 h-5 animate-pulse" /> Saving...</>
+              ) : completeStatus === 'error' ? (
+                <><AlertCircle className="w-5 h-5" /> Error — try again</>
+              ) : isCompleted ? (
+                <><CheckCircle className="w-5 h-5 text-emerald-400" /> Recomplete Pre-Approval</>
+              ) : (
+                <><CheckCircle className="w-5 h-5 text-[#bdc4a7]" /> I've Contacted a Lender — Mark Complete</>
+              )}
+            </button>
+            {!isLoggedIn && (
+              <p className="text-white/40 text-xs text-center">Log in to save your milestone progress</p>
+            )}
           </div>
         </motion.div>
 
@@ -268,5 +359,6 @@ export function PreApprovalLetterView({ onBack }: Props) {
         </motion.div>
       </div>
     </motion.div>
+    </>
   );
 }

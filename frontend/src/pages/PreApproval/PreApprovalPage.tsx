@@ -123,21 +123,22 @@ export function PreApprovalPage() {
 
         {/* ── Mobile: stacked vertically ── */}
         <div className="flex flex-col items-center gap-0 md:hidden">
-          {[
-            'Loan Application',
-            'Gather Documents',
-            'Qualification',
-            'Pre-Approval',
-          ].map((label, i) => (
+          {([
+            ['Loan Application',  'loan-application'],
+            ['Gather Documents',  'gather-documents'],
+            ['Qualification',     'qualification'],
+            ['Pre-Approval',      'pre-approval'],
+          ] as [string, View][]).map(([label, id], i) => (
             <div key={label} className="flex flex-col items-center w-full">
-              <motion.div
+              <motion.button
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.2 }}
-                className="glass rounded-3xl w-full py-16 flex items-center justify-center"
+                onClick={() => setActiveView(id)}
+                className="glass rounded-3xl w-full py-16 flex items-center justify-center hover:bg-white/20 transition-all cursor-pointer"
               >
                 <p className="text-white font-bold text-3xl">{label}</p>
-              </motion.div>
+              </motion.button>
               {i < 3 && (
                 <motion.svg
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.2 + 0.15 }}
