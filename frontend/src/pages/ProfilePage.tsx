@@ -90,12 +90,13 @@ export function ProfilePage() {
           industryOfWork: loaded.industryOfWork ?? '',
         });
 
+        const existingProfile = getUserProfile();
         saveUserProfile({
           name: `${loaded.firstName} ${loaded.lastName}`.trim(),
           desiredHomePrice: loaded.desiredHomePrice?.toString() ?? '',
           creditScore: loaded.creditScore?.toString() ?? '',
           monthlyIncome: loaded.monthlyIncome?.toString() ?? '',
-          yearlyIncome: loaded.yearlyIncome?.toString() ?? '',
+          yearlyIncome: existingProfile?.yearlyIncome ?? '',
           savingsTotal: loaded.totalSavings?.toString() ?? '',
           monthlyExpenses: loaded.monthlyExpenses?.toString() ?? '',
           industry: loaded.industryOfWork ?? '',
@@ -156,12 +157,13 @@ export function ProfilePage() {
     }
 
     // Mirror server profile data to localStorage so preapproval flows read the most recent values.
+    const existingLocalProfile = getUserProfile();
     saveUserProfile({
       name: `${form.firstName} ${form.lastName}`.trim(),
       desiredHomePrice: form.desiredHomePrice,
       creditScore: form.creditScore,
       monthlyIncome: form.monthlyIncome,
-      yearlyIncome: profile?.yearlyIncome?.toString() ?? '',
+      yearlyIncome: existingLocalProfile?.yearlyIncome ?? '',
       savingsTotal: form.totalSavings,
       monthlyExpenses: form.monthlyExpenses,
       industry: form.industryOfWork,

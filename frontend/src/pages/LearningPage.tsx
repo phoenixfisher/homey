@@ -314,7 +314,14 @@ export function LearningPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [activeModuleId, setActiveModuleId] = useState(learningModules[0].id);
-  const [completedModules, setCompletedModules] = useState<Set<string>>(new Set());
+  const [completedModules, setCompletedModules] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('homeyCompletedModules');
+      return saved ? new Set<string>(JSON.parse(saved) as string[]) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
@@ -338,6 +345,10 @@ export function LearningPage() {
     setIsCorrect(false);
     setCorrectCount(0);
   }, [activeModuleId]);
+
+  useEffect(() => {
+    localStorage.setItem('homeyCompletedModules', JSON.stringify([...completedModules]));
+  }, [completedModules]);
 
   const handleMarkKnown = () => {
     setCompletedModules((prev) => {

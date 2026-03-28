@@ -16,7 +16,7 @@ import {
   AlertCircle,
   History,
 } from 'lucide-react';
-import { fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn } from '@/lib/auth';
+import { fetchSessionUser, getUserProfile, saveUserProfile, isLoggedIn as getIsLoggedIn } from '@/lib/auth';
 import { fetchUserProfile } from '@/lib/profile';
 import {
   fetchQualificationSnapshot,
@@ -81,15 +81,16 @@ export function QualificationView({ onBack, onNext }: Props) {
             desiredHomePrice: profileFromApi.desiredHomePrice?.toString() ?? '',
           };
           setProfile(mappedProfile);
+          const existing = getUserProfile();
           saveUserProfile({
-            name: mappedProfile.name,
-            desiredHomePrice: mappedProfile.desiredHomePrice,
-            creditScore: mappedProfile.creditScore,
-            monthlyIncome: mappedProfile.monthlyIncome,
-            yearlyIncome: '',
-            savingsTotal: mappedProfile.savingsTotal,
-            monthlyExpenses: mappedProfile.monthlyExpenses,
-            industry: profileFromApi.industryOfWork ?? '',
+            name: mappedProfile.name ?? existing?.name ?? '',
+            desiredHomePrice: mappedProfile.desiredHomePrice ?? existing?.desiredHomePrice ?? '',
+            creditScore: mappedProfile.creditScore ?? existing?.creditScore ?? '',
+            monthlyIncome: mappedProfile.monthlyIncome ?? existing?.monthlyIncome ?? '',
+            yearlyIncome: existing?.yearlyIncome ?? '',
+            savingsTotal: mappedProfile.savingsTotal ?? existing?.savingsTotal ?? '',
+            monthlyExpenses: mappedProfile.monthlyExpenses ?? existing?.monthlyExpenses ?? '',
+            industry: profileFromApi.industryOfWork ?? existing?.industry ?? '',
           });
         }
 
