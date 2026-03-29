@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Home, Award, TrendingUp, DollarSign, CheckCircle2, Circle } from 'lucide-react';
 import { useNavigate, Link } from 'react-router';
 import { AppLayout } from '@/components/AppLayout';
+import { GettingStartedModal } from '@/components/GettingStartedModal';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import {
@@ -15,6 +16,7 @@ import {
   type SessionUser,
   HOMEY_MILESTONES_KEY,
 } from '@/lib/auth';
+import { hydrateLocalProfileFromServer, profileHasTargetPriceAndMonthlyBudget } from '@/lib/profile';
 
 interface Milestone {
   id: number;
@@ -90,12 +92,17 @@ export function DashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
 
   useEffect(() => {
     void (async () => {
       const user = await fetchSessionUser();
       setSessionUser(user);
       setIsAuthenticated(!!user || getIsLoggedIn());
+
+      if (user) {
+        await hydrateLocalProfileFromServer();
+      }
 
       const savedProfile = getUserProfile();
       if (savedProfile) {
@@ -158,8 +165,12 @@ export function DashboardPage() {
   const downPaymentProgress = downPaymentTarget > 0 ? (savings / downPaymentTarget) * 100 : 0;
   const monthlyBudget = monthlyIncome - monthlyExpenses;
 
-  if (isProfileLoaded && !profile) {
+  if (
+    isProfileLoaded &&
+    (!profile || !profileHasTargetPriceAndMonthlyBudget(profile))
+  ) {
     return (
+      <>
       <AppLayout>
         <MainNav
           active="dashboard"
@@ -181,19 +192,30 @@ export function DashboardPage() {
             >
               <h1 className="text-3xl md:text-4xl text-white mb-4">Complete onboarding first</h1>
               <p className="text-white/75 max-w-2xl mx-auto mb-6">
-                Your dashboard uses the profile created on the Home page. Add your income, savings,
-                and target home price there first, then come back here to track your progress.
+                Your dashboard needs a target home price plus monthly income and expenses so your monthly
+                budget can be calculated. Use Get Started below to enter your details.
               </p>
               <button
-                onClick={() => void navigate('/')}
+                type="button"
+                onClick={() => setShowGettingStarted(true)}
                 className="px-6 py-3 bg-white text-[#3e78b2] rounded-2xl hover:bg-white/90 transition-all"
               >
-                Go To Home
+                Get Started
               </button>
             </motion.div>
           </div>
         </main>
       </AppLayout>
+      <GettingStartedModal
+        open={showGettingStarted}
+        onClose={() => setShowGettingStarted(false)}
+        sessionUser={sessionUser}
+        onCompleted={async () => {
+          await hydrateLocalProfileFromServer();
+          setProfile(getUserProfile());
+        }}
+      />
+    </>
     );
   }
 

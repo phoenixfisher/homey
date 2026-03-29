@@ -5,7 +5,13 @@ import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout, saveUserProfile } from '@/lib/auth';
-import { fetchUserProfile, updateUserProfile, type UpdateUserProfileRequest, type UserProfile } from '@/lib/profile';
+import {
+  applyUserProfileToLocalStorage,
+  fetchUserProfile,
+  updateUserProfile,
+  type UpdateUserProfileRequest,
+  type UserProfile,
+} from '@/lib/profile';
 
 const industries = [
   'Technology',
@@ -90,17 +96,7 @@ export function ProfilePage() {
           industryOfWork: loaded.industryOfWork ?? '',
         });
 
-        const existingProfile = getUserProfile();
-        saveUserProfile({
-          name: `${loaded.firstName} ${loaded.lastName}`.trim(),
-          desiredHomePrice: loaded.desiredHomePrice?.toString() ?? '',
-          creditScore: loaded.creditScore?.toString() ?? '',
-          monthlyIncome: loaded.monthlyIncome?.toString() ?? '',
-          yearlyIncome: existingProfile?.yearlyIncome ?? '',
-          savingsTotal: loaded.totalSavings?.toString() ?? '',
-          monthlyExpenses: loaded.monthlyExpenses?.toString() ?? '',
-          industry: loaded.industryOfWork ?? '',
-        });
+        applyUserProfileToLocalStorage(loaded);
       } catch (err) {
         console.error(err);
         setError('Unable to load your profile right now.');

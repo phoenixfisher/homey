@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
+import { GettingStartedModal } from '@/components/GettingStartedModal';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import {
@@ -21,6 +22,7 @@ import {
   type HomeyUserProfile,
   type SessionUser,
 } from '@/lib/auth';
+import { hydrateLocalProfileFromServer, profileHasTargetPriceAndMonthlyBudget } from '@/lib/profile';
 
 const STORAGE_KEY = 'homeyMoneyManagementSettings';
 
@@ -58,12 +60,17 @@ export function MoneyManagementPage() {
   const [savedSettings, setSavedSettings] = useState<MoneySettings>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState('');
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
 
   useEffect(() => {
     void (async () => {
       const user = await fetchSessionUser();
       setSessionUser(user);
       setIsAuthenticated(!!user || getIsLoggedIn());
+
+      if (user) {
+        await hydrateLocalProfileFromServer();
+      }
 
       const savedProfile = getUserProfile();
       if (savedProfile) {
@@ -134,8 +141,12 @@ export function MoneyManagementPage() {
     void navigate('/');
   };
 
-  if (isProfileLoaded && !profile) {
+  if (
+    isProfileLoaded &&
+    (!profile || !profileHasTargetPriceAndMonthlyBudget(profile))
+  ) {
     return (
+      <>
       <AppLayout>
         <MainNav
           active="money-management"
@@ -157,19 +168,30 @@ export function MoneyManagementPage() {
             >
               <h1 className="text-3xl md:text-4xl text-white mb-4">Set up your profile first</h1>
               <p className="text-white/75 max-w-2xl mx-auto mb-6">
-                Money Management uses your onboarding details to calculate your monthly cushion,
-                savings progress, and home budget. Start on the Home page to enter that information.
+                Money Management needs a target home price and your monthly income and expenses so your
+                monthly budget can be calculated. Use Get Started below to enter your details.
               </p>
               <button
-                onClick={() => void navigate('/')}
-              className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
-            >
-                Go To Home
+                type="button"
+                onClick={() => setShowGettingStarted(true)}
+                className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+              >
+                Get Started
               </button>
             </motion.div>
           </div>
         </main>
       </AppLayout>
+      <GettingStartedModal
+        open={showGettingStarted}
+        onClose={() => setShowGettingStarted(false)}
+        sessionUser={sessionUser}
+        onCompleted={async () => {
+          await hydrateLocalProfileFromServer();
+          setProfile(getUserProfile());
+        }}
+      />
+    </>
     );
   }
 

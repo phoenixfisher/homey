@@ -7,7 +7,7 @@ import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import { backendLogout, fetchSessionUser, getUserProfile, logout } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
-import { fetchUserProfile, updateUserProfile } from '@/lib/profile';
+import { fetchUserProfile, hydrateLocalProfileFromServer, updateUserProfile } from '@/lib/profile';
 
 async function syncLocalProfileToBackend(): Promise<void> {
   const local = getUserProfile();
@@ -86,7 +86,8 @@ export function LoginPage() {
 
       setIsLoggedIn(true);
       await syncLocalProfileToBackend();
-      navigate('/dashboard');
+      await hydrateLocalProfileFromServer();
+      navigate('/');
     } catch (err) {
       console.error(err);
       setError('Unable to reach the server. Is the backend running?');
