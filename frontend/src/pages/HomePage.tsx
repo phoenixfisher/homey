@@ -32,6 +32,7 @@ import {
   type HomeyUserProfile,
   type SessionUser,
 } from '@/lib/auth';
+import { fetchUserProfile, updateUserProfile } from '@/lib/profile';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -88,6 +89,36 @@ export function HomePage() {
     saveUserProfile(profileData);
     setLocalProfile(profileData);
     setIsLoggedIn(true);
+
+    // If the user is already logged in with a session, push onboarding data to the backend
+    if (sessionUser) {
+      void (async () => {
+        try {
+          const current = await fetchUserProfile();
+          if (current) {
+            const nameParts = profileData.name.trim().split(' ');
+            const firstName = nameParts[0] ?? current.firstName;
+            const lastName = nameParts.slice(1).join(' ') || current.lastName;
+            await updateUserProfile({
+              username: current.username,
+              email: current.email,
+              firstName,
+              lastName,
+              desiredHomePrice: parseFloat(profileData.desiredHomePrice) || null,
+              creditScore: profileData.creditScore === 'No Credit' ? null : (parseInt(profileData.creditScore) || null),
+              monthlyIncome: parseFloat(profileData.monthlyIncome) || null,
+              monthlyExpenses: parseFloat(profileData.monthlyExpenses) || null,
+              totalSavings: parseFloat(profileData.savingsTotal) || null,
+              targetZipCode: current.targetZipCode,
+              industryOfWork: profileData.industry || null,
+            });
+          }
+        } catch {
+          // silently ignore — data is still in localStorage
+        }
+      })();
+    }
+
     void navigate('/dashboard');
   };
 
