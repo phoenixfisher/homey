@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { motion } from 'motion/react';
+import { useNavigate } from 'react-router';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   BookOpen,
   Brain,
@@ -328,6 +328,7 @@ export function LearningPage() {
   const [isChecked, setIsChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  const [completionFanfare, setCompletionFanfare] = useState<'known' | 'quiz' | null>(null);
 
   const activeModule = useMemo(
     () => learningModules.find((module) => module.id === activeModuleId) ?? learningModules[0],
@@ -337,6 +338,7 @@ export function LearningPage() {
   const currentQuestion = activeModule.quiz[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === activeModule.quiz.length - 1;
   const quizProgress = ((currentQuestionIndex + 1) / activeModule.quiz.length) * 100;
+  const isActiveModuleComplete = completedModules.has(activeModule.id);
 
   useEffect(() => {
     setCurrentQuestionIndex(0);
@@ -350,12 +352,24 @@ export function LearningPage() {
     localStorage.setItem('homeyCompletedModules', JSON.stringify([...completedModules]));
   }, [completedModules]);
 
+  useEffect(() => {
+    if (!completionFanfare) {
+      return;
+    }
+    const t = window.setTimeout(() => setCompletionFanfare(null), 2400);
+    return () => window.clearTimeout(t);
+  }, [completionFanfare]);
+
   const handleMarkKnown = () => {
+    if (completedModules.has(activeModule.id)) {
+      return;
+    }
     setCompletedModules((prev) => {
       const next = new Set(prev);
       next.add(activeModule.id);
       return next;
     });
+    setCompletionFanfare('known');
   };
 
   const handleCheckAnswer = () => {
@@ -377,11 +391,15 @@ export function LearningPage() {
     }
 
     if (isLastQuestion) {
+      const wasNew = !completedModules.has(activeModule.id);
       setCompletedModules((prev) => {
         const next = new Set(prev);
         next.add(activeModule.id);
         return next;
       });
+      if (wasNew) {
+        setCompletionFanfare('quiz');
+      }
       return;
     }
 
@@ -428,6 +446,31 @@ export function LearningPage() {
         )}
       />
 
+      <AnimatePresence>
+        {completionFanfare && (
+          <motion.div
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: -16, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            className="pointer-events-none fixed top-24 left-1/2 z-[60] -translate-x-1/2 px-5 py-3 rounded-2xl bg-white text-[#2d5a8a] shadow-xl shadow-black/20 flex items-center gap-3 max-w-[min(90vw,24rem)]"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
+              <CircleCheckBig className="w-6 h-6" />
+            </span>
+            <span className="text-left">
+              <span className="block font-semibold leading-tight">
+                {completionFanfare === 'known' ? 'Marked as mastered' : 'Quiz complete'}
+              </span>
+              <span className="text-sm text-[#2d5a8a]/85">Module added to your progress.</span>
+            </span>
+            <Sparkles className="w-5 h-5 shrink-0 text-amber-500" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <main className="relative z-10 flex-1 px-4 py-10 md:py-14">
         <div className="max-w-7xl mx-auto">
           <motion.section
@@ -449,10 +492,19 @@ export function LearningPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 min-w-[260px]">
-                <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
+                <motion.div
+                  initial={false}
+                  animate={
+                    completionFanfare
+                      ? { scale: [1, 1.06, 1], boxShadow: ['0 0 0 0 rgba(255,255,255,0)', '0 0 0 6px rgba(255,255,255,0.2)', '0 0 0 0 rgba(255,255,255,0)'] }
+                      : {}
+                  }
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-2xl bg-white/10 border border-white/20 p-4"
+                >
                   <div className="text-white/70 text-sm">Modules Completed</div>
                   <div className="text-white text-2xl font-semibold">{completedCount}/{learningModules.length}</div>
-                </div>
+                </motion.div>
                 <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
                   <div className="text-white/70 text-sm">Active Topic</div>
                   <div className="text-white text-base font-semibold leading-tight">{activeModule.title}</div>
@@ -526,14 +578,38 @@ export function LearningPage() {
             >
               <article className="glass rounded-3xl p-6 md:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-                  <h2 className="text-3xl text-white font-semibold">{activeModule.title}</h2>
-                  <button
+                  <div className="flex flex-wrap items-center gap-3 min-w-0">
+                    <h2 className="text-3xl text-white font-semibold">{activeModule.title}</h2>
+                    {isActiveModuleComplete && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/25 border border-emerald-200/40 text-emerald-50 text-sm font-medium shrink-0">
+                        <CircleCheckBig className="w-4 h-4" />
+                        Completed
+                      </span>
+                    )}
+                  </div>
+                  <motion.button
                     type="button"
+                    disabled={isActiveModuleComplete}
                     onClick={handleMarkKnown}
-                    className="px-4 py-2 rounded-xl bg-white text-[#3e78b2] hover:bg-white/90 transition-all"
+                    whileTap={isActiveModuleComplete ? undefined : { scale: 0.97 }}
+                    className={`px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 ${
+                      isActiveModuleComplete
+                        ? 'bg-white/25 text-white/70 cursor-not-allowed border border-white/20'
+                        : 'bg-white text-[#3e78b2] hover:bg-white/90 shadow-md shadow-black/10 hover:shadow-lg'
+                    }`}
                   >
-                    I Already Know This
-                  </button>
+                    {isActiveModuleComplete ? (
+                      <>
+                        <CircleCheckBig className="w-4 h-4 opacity-90" />
+                        Completed!
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        I Already Know This
+                      </>
+                    )}
+                  </motion.button>
                 </div>
 
                 <p className="text-white/85 text-lg leading-relaxed mb-6">{activeModule.summary}</p>
@@ -631,14 +707,35 @@ export function LearningPage() {
                     >
                       Check Answer
                     </button>
-                    <button
+                    <motion.button
                       type="button"
-                      disabled={!isChecked}
+                      disabled={!isChecked || (isLastQuestion && isActiveModuleComplete)}
                       onClick={handleNextQuestion}
-                      className="px-5 py-2.5 rounded-xl glass text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      whileTap={
+                        !isChecked || (isLastQuestion && isActiveModuleComplete)
+                          ? undefined
+                          : { scale: 0.97 }
+                      }
+                      className={`px-5 py-2.5 rounded-xl transition-all inline-flex items-center gap-2 ${
+                        isLastQuestion && isActiveModuleComplete
+                          ? 'bg-white/15 text-white/55 border border-white/20 cursor-not-allowed'
+                          : 'glass text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
                     >
-                      {isLastQuestion ? 'Finish Module' : 'Next Question'}
-                    </button>
+                      {isLastQuestion && isActiveModuleComplete ? (
+                        <>
+                          <CircleCheckBig className="w-4 h-4" />
+                          Module already done
+                        </>
+                      ) : isLastQuestion ? (
+                        <>
+                          <GraduationCap className="w-4 h-4" />
+                          Finish Module
+                        </>
+                      ) : (
+                        'Next Question'
+                      )}
+                    </motion.button>
                   </div>
                 </div>
               </section>
