@@ -17,8 +17,13 @@ builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.None;
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.None : CookieSecurePolicy.Always;
+    // In development we typically run Vite on http://localhost:5173 and proxy `/api` to the backend.
+    // Using SameSite=None on an HTTP cookie is rejected by modern browsers, which breaks session auth.
+    // Lax works for same-site requests (including proxied API calls).
+    options.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.None
+        : CookieSecurePolicy.Always;
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

@@ -125,7 +125,7 @@ export function OnboardingGate() {
           monthlyIncome: parseFloat(profileData.monthlyIncome) || null,
           monthlyExpenses: parseFloat(profileData.monthlyExpenses) || null,
           totalSavings: parseFloat(profileData.savingsTotal) || null,
-          targetZipCode: isValidZip(profileData.targetZipCode) ? profileData.targetZipCode : null,
+          targetZipCode: isValidZip(profileData.targetZipCode ?? '') ? (profileData.targetZipCode ?? '').trim() : null,
           industryOfWork: profileData.industry || null,
         });
       }
