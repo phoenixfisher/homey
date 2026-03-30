@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
   ArrowRight,
-  DollarSign,
+  DollarSign, 
   PiggyBank,
   Receipt,
   Target,
