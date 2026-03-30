@@ -16,6 +16,7 @@ import {
 import { AppLayout } from '@/components/AppLayout';
 import { getUserProfile, saveUserProfile, type HomeyUserProfile } from '@/lib/auth';
 import { fetchUserProfile, updateUserProfile } from '@/lib/profile';
+import { fetchSessionUser } from '@/lib/auth';
 
 const emptyForm = {
   name: '',
@@ -56,6 +57,40 @@ export function OnboardingGate() {
   const [step, setStep] = useState(1);
   const [noCredit, setNoCredit] = useState(false);
   const [formData, setFormData] = useState(emptyForm);
+
+  useEffect(() => {
+    const checkSessionAndHydrate = async () => {
+      if (profile) return; // already have profile
+
+      try {
+        const sessionUser = await fetchSessionUser();
+        if (sessionUser) {
+          // User is logged in, try to hydrate profile from server
+          const serverProfile = await fetchUserProfile();
+          if (serverProfile) {
+            // Apply to localStorage
+            const localProfile: HomeyUserProfile = {
+              name: `${serverProfile.firstName} ${serverProfile.lastName}`.trim(),
+              desiredHomePrice: serverProfile.desiredHomePrice?.toString() ?? '',
+              creditScore: serverProfile.creditScore?.toString() ?? '',
+              monthlyIncome: serverProfile.monthlyIncome?.toString() ?? '',
+              yearlyIncome: '', // not stored server-side
+              savingsTotal: serverProfile.totalSavings?.toString() ?? '',
+              monthlyExpenses: serverProfile.monthlyExpenses?.toString() ?? '',
+              industry: serverProfile.industryOfWork ?? '',
+              targetZipCode: serverProfile.targetZipCode ?? '',
+            };
+            saveUserProfile(localProfile);
+            setProfile(localProfile);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to hydrate profile:', error);
+      }
+    };
+
+    void checkSessionAndHydrate();
+  }, [profile]);
 
   if (profile) return <Outlet />;
 
