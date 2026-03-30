@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
@@ -125,6 +128,13 @@ export function HomesPage() {
   const [homes, setHomes] = useState<HomesData | null>(null);
 
   useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: markerIcon2x,
+      iconUrl: markerIcon,
+      shadowUrl: markerShadow,
+    });
+
     void (async () => {
       try {
         const sessionUser = await fetchSessionUser();
