@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, Menu, X } from 'lucide-react';
 
-type MainNavSection = 'home' | 'dashboard' | 'money-management' | 'pre-approval' | 'learning' | 'homes';
+type MainNavSection = 'home' | 'dashboard' | 'money-management' | 'pre-approval' | 'learning' | 'homes' | 'okr';
 
 const navItems: { id: MainNavSection; label: string; to: string }[] = [
   { id: 'dashboard', label: 'Dashboard', to: '/dashboard' },
@@ -11,6 +11,7 @@ const navItems: { id: MainNavSection; label: string; to: string }[] = [
   { id: 'money-management', label: 'Money Management', to: '/money-management' },
   { id: 'pre-approval', label: 'Pre-Approval', to: '/pre-approval' },
   { id: 'learning', label: 'Learning', to: '/learning' },
+  { id: 'okr', label: 'OKRs', to: '/okrs' },
 ];
 
 export function MainNav({

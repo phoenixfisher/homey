@@ -7,6 +7,7 @@ import { PreApprovalPage } from '@/pages/PreApproval/PreApprovalPage';
 import { LearningPage } from '@/pages/LearningPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { HomesPage } from '@/pages/HomesPage';
+import { OkrPage } from '@/pages/OkrPage';
 import { OnboardingGate } from '@/components/OnboardingGate';
 
 const router = createBrowserRouter([
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { path: '/pre-approval',     Component: PreApprovalPage },
       { path: '/profile',          Component: ProfilePage },
       { path: '/homes',            Component: HomesPage },
+      { path: '/okrs',             Component: OkrPage },
     ],
   },
 ]);
