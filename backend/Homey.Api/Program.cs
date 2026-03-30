@@ -17,8 +17,13 @@ builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.None;
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.None : CookieSecurePolicy.Always;
+    // In development we typically run Vite on http://localhost:5173 and proxy `/api` to the backend.
+    // Using SameSite=None on an HTTP cookie is rejected by modern browsers, which breaks session auth.
+    // Lax works for same-site requests (including proxied API calls).
+    options.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.None
+        : CookieSecurePolicy.Always;
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -63,8 +68,12 @@ const string UserSessionKey = "User";
 
 app.MapPost("/api/auth/register", (RegisterRequest request, IDbConnection db, HttpContext httpContext) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Username) ||
-        string.IsNullOrWhiteSpace(request.Email) ||
+    var username = request.Username?.Trim() ?? string.Empty;
+    var email = request.Email?.Trim() ?? string.Empty;
+    var normalizedEmail = email.ToLowerInvariant();
+
+    if (string.IsNullOrWhiteSpace(username) ||
+        string.IsNullOrWhiteSpace(normalizedEmail) ||
         string.IsNullOrWhiteSpace(request.Password) ||
         string.IsNullOrWhiteSpace(request.FirstName) ||
         string.IsNullOrWhiteSpace(request.LastName))
@@ -74,7 +83,7 @@ app.MapPost("/api/auth/register", (RegisterRequest request, IDbConnection db, Ht
 
     const string checkSql = """
         SELECT COUNT(*) FROM users
-        WHERE username = @username OR email = @email;
+        WHERE TRIM(username) = @username OR LOWER(TRIM(email)) = @email;
         """;
 
     using (db)
@@ -84,8 +93,8 @@ app.MapPost("/api/auth/register", (RegisterRequest request, IDbConnection db, Ht
         using (var checkCmd = db.CreateCommand())
         {
             checkCmd.CommandText = checkSql;
-            checkCmd.Parameters.Add(new MySqlParameter("@username", request.Username));
-            checkCmd.Parameters.Add(new MySqlParameter("@email", request.Email));
+            checkCmd.Parameters.Add(new MySqlParameter("@username", username));
+            checkCmd.Parameters.Add(new MySqlParameter("@email", normalizedEmail));
 
             var existingObj = checkCmd.ExecuteScalar();
             var existing = existingObj is null ? 0L : Convert.ToInt64(existingObj);
@@ -106,21 +115,21 @@ app.MapPost("/api/auth/register", (RegisterRequest request, IDbConnection db, Ht
         using (var insertCmd = db.CreateCommand())
         {
             insertCmd.CommandText = insertSql;
-            insertCmd.Parameters.Add(new MySqlParameter("@username", request.Username));
-            insertCmd.Parameters.Add(new MySqlParameter("@email", request.Email));
+            insertCmd.Parameters.Add(new MySqlParameter("@username", username));
+            insertCmd.Parameters.Add(new MySqlParameter("@email", normalizedEmail));
             insertCmd.Parameters.Add(new MySqlParameter("@password_hash", passwordHash));
-            insertCmd.Parameters.Add(new MySqlParameter("@first_name", request.FirstName));
-            insertCmd.Parameters.Add(new MySqlParameter("@last_name", request.LastName));
+            insertCmd.Parameters.Add(new MySqlParameter("@first_name", request.FirstName.Trim()));
+            insertCmd.Parameters.Add(new MySqlParameter("@last_name", request.LastName.Trim()));
 
             var result = insertCmd.ExecuteScalar();
             var userId = Convert.ToInt32(result);
 
             var response = new AuthResponse(
                 userId,
-                request.Username,
-                request.Email,
-                request.FirstName,
-                request.LastName
+                username,
+                normalizedEmail,
+                request.FirstName.Trim(),
+                request.LastName.Trim()
             );
 
             httpContext.Session.SetString(UserSessionKey, JsonSerializer.Serialize(response));
@@ -131,7 +140,9 @@ app.MapPost("/api/auth/register", (RegisterRequest request, IDbConnection db, Ht
 
 app.MapPost("/api/auth/login", (LoginRequest request, IDbConnection db, HttpContext httpContext) =>
 {
-    if (string.IsNullOrWhiteSpace(request.UsernameOrEmail) || string.IsNullOrWhiteSpace(request.Password))
+    var idRaw = request.UsernameOrEmail?.Trim() ?? string.Empty;
+    var idEmail = idRaw.ToLowerInvariant();
+    if (string.IsNullOrWhiteSpace(idRaw) || string.IsNullOrWhiteSpace(request.Password))
     {
         return Results.BadRequest("Username/email and password are required.");
     }
@@ -139,7 +150,7 @@ app.MapPost("/api/auth/login", (LoginRequest request, IDbConnection db, HttpCont
     const string sql = """
         SELECT user_id, username, email, password_hash, first_name, last_name
         FROM users
-        WHERE username = @id OR email = @id
+        WHERE TRIM(username) = @id OR LOWER(TRIM(email)) = @email
         LIMIT 1;
         """;
 
@@ -156,7 +167,8 @@ app.MapPost("/api/auth/login", (LoginRequest request, IDbConnection db, HttpCont
 
         using var cmd = db.CreateCommand();
         cmd.CommandText = sql;
-        cmd.Parameters.Add(new MySqlParameter("@id", request.UsernameOrEmail));
+        cmd.Parameters.Add(new MySqlParameter("@id", idRaw));
+        cmd.Parameters.Add(new MySqlParameter("@email", idEmail));
 
         using var reader = cmd.ExecuteReader();
         if (!reader.Read())
@@ -217,6 +229,35 @@ app.MapPost("/api/auth/logout", (HttpContext httpContext) =>
 {
     httpContext.Session.Clear();
     return Results.Ok();
+});
+
+// ── OKR / Product Metrics ────────────────────────────────────────────────────
+
+app.MapGet("/api/metrics/okr", (IDbConnection db) =>
+{
+    const string sql = """
+        SELECT
+            (SELECT COUNT(*) FROM users) AS total_users,
+            (SELECT COUNT(*)
+             FROM users
+             WHERE last_logged_in_at IS NOT NULL
+               AND last_logged_in_at >= (UTC_TIMESTAMP() - INTERVAL 14 DAY)
+            ) AS active_users;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        using var reader = cmd.ExecuteReader();
+        reader.Read();
+
+        var totalUsers = Convert.ToInt64(reader.GetValue(reader.GetOrdinal("total_users")));
+        var activeUsers = Convert.ToInt64(reader.GetValue(reader.GetOrdinal("active_users")));
+
+        return Results.Ok(new { totalUsers, activeUsers, activeWindowDays = 14 });
+    }
 });
 
 app.MapGet("/api/profile/me", (IDbConnection db, HttpContext httpContext) =>
