@@ -5,8 +5,33 @@ import { Lock, ArrowRight } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
-import { backendLogout, fetchSessionUser, logout } from '@/lib/auth';
+import { backendLogout, fetchSessionUser, getUserProfile, logout } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { fetchUserProfile, hydrateLocalProfileFromServer, updateUserProfile } from '@/lib/profile';
+
+async function syncLocalProfileToBackend(): Promise<void> {
+  const local = getUserProfile();
+  if (!local) return;
+  try {
+    const current = await fetchUserProfile();
+    if (!current) return;
+    await updateUserProfile({
+      username: current.username,
+      email: current.email,
+      firstName: current.firstName,
+      lastName: current.lastName,
+      desiredHomePrice: parseFloat(local.desiredHomePrice) || current.desiredHomePrice,
+      creditScore: local.creditScore === 'No Credit' ? null : (parseInt(local.creditScore) || current.creditScore),
+      monthlyIncome: parseFloat(local.monthlyIncome) || current.monthlyIncome,
+      monthlyExpenses: parseFloat(local.monthlyExpenses) || current.monthlyExpenses,
+      totalSavings: parseFloat(local.savingsTotal) || current.totalSavings,
+      targetZipCode: current.targetZipCode,
+      industryOfWork: local.industry || current.industryOfWork,
+    });
+  } catch {
+    // silently ignore — localStorage still has the data
+  }
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -60,7 +85,9 @@ export function LoginPage() {
       }
 
       setIsLoggedIn(true);
-      navigate('/dashboard');
+      await syncLocalProfileToBackend();
+      await hydrateLocalProfileFromServer();
+      navigate('/');
     } catch (err) {
       console.error(err);
       setError('Unable to reach the server. Is the backend running?');
@@ -93,6 +120,7 @@ export function LoginPage() {
         return;
       }
 
+      await syncLocalProfileToBackend();
       setIsRegisterMode(false);
       setLoginForm({ usernameOrEmail: registerForm.username || registerForm.email, password: '' });
     } catch (err) {

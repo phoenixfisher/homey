@@ -15,8 +15,20 @@ import {
   X,
   File,
   Eye,
+  Save,
+  CheckCircle,
+  Cloud,
+  AlertCircle,
 } from 'lucide-react';
-import { getUserProfile, saveUserProfile } from '@/lib/auth';
+import { getUserProfile, saveUserProfile, fetchSessionUser } from '@/lib/auth';
+import { fetchUserProfile, type UserProfile } from '@/lib/profile';
+import {
+  fetchDocumentChecklist,
+  saveDocumentChecklist,
+  formatSavedAt,
+  type DocumentChecklist,
+} from '@/lib/preapproval';
+import { LoginPromptModal } from '@/components/LoginPromptModal';
 
 interface DocSlot {
   id: string;
@@ -108,6 +120,29 @@ interface Props {
   onNext: () => void;
 }
 
+// Maps slot IDs to DocumentChecklist keys
+const SLOT_TO_CHECKLIST_KEY: Record<string, keyof Omit<DocumentChecklist, 'savedAt'>> = {
+  paystub_1: 'paystub1',
+  paystub_2: 'paystub2',
+  paystub_eoy_1: 'paystubEoy1',
+  paystub_eoy_2: 'paystubEoy2',
+  tax_1: 'tax1',
+  tax_2: 'tax2',
+  w2_year1: 'w2Year1',
+  w2_year2: 'w2Year2',
+  gov_id: 'govId',
+  bank_1: 'bank1',
+  bank_2: 'bank2',
+  bank_3: 'bank3',
+  bank_4: 'bank4',
+};
+
+const DEFAULT_CHECKLIST: Omit<DocumentChecklist, 'savedAt'> = {
+  paystub1: false, paystub2: false, paystubEoy1: false, paystubEoy2: false,
+  tax1: false, tax2: false, w2Year1: false, w2Year2: false, govId: false,
+  bank1: false, bank2: false, bank3: false, bank4: false,
+};
+
 export function GatherDocumentsView({ onBack, onNext }: Props) {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [files, setFiles] = useState<Record<string, StoredFile>>({});
@@ -117,24 +152,98 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
   const [monthlyIncome, setMonthlyIncome] = useState('');
   const [savingsTotal, setSavingsTotal] = useState('');
   const [monthlyExpenses, setMonthlyExpenses] = useState('');
+  const [desiredHomePrice, setDesiredHomePrice] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [checklistSaveStatus, setChecklistSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [checklistSavedAt, setChecklistSavedAt] = useState<string | null>(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  // DB-backed checklist (slot ID -> checked)
+  const [dbChecklist, setDbChecklist] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) setFiles(JSON.parse(saved) as Record<string, StoredFile>);
 
-    const profile = getUserProfile();
-    if (profile) {
-      setMonthlyIncome(profile.monthlyIncome ?? '');
-      setSavingsTotal(profile.savingsTotal ?? '');
-      setMonthlyExpenses(profile.monthlyExpenses ?? '');
+    const localProfile = getUserProfile();
+    if (localProfile) {
+      setMonthlyIncome(localProfile.monthlyIncome ?? '');
+      setSavingsTotal(localProfile.savingsTotal ?? '');
+      setMonthlyExpenses(localProfile.monthlyExpenses ?? '');
+      setDesiredHomePrice(localProfile.desiredHomePrice ?? '');
     }
+
+    void (async () => {
+      const session = await fetchSessionUser();
+      if (session) {
+        const profile = await fetchUserProfile();
+        if (profile) {
+          setMonthlyIncome(profile.monthlyIncome?.toString() ?? '');
+          setSavingsTotal(profile.totalSavings?.toString() ?? '');
+          setMonthlyExpenses(profile.monthlyExpenses?.toString() ?? '');
+          setDesiredHomePrice(profile.desiredHomePrice?.toString() ?? '');
+          saveUserProfile({
+            name: `${profile.firstName} ${profile.lastName}`.trim(),
+            desiredHomePrice: profile.desiredHomePrice?.toString() ?? '',
+            creditScore: profile.creditScore?.toString() ?? '',
+            monthlyIncome: profile.monthlyIncome?.toString() ?? '',
+            yearlyIncome: '',
+            savingsTotal: profile.totalSavings?.toString() ?? '',
+            monthlyExpenses: profile.monthlyExpenses?.toString() ?? '',
+            industry: profile.industryOfWork ?? '',
+          });
+        }
+
+        setIsLoggedIn(true);
+        try {
+          const dbData = await fetchDocumentChecklist();
+          if (dbData) {
+            setChecklistSavedAt(formatSavedAt(dbData.savedAt));
+            // Convert checklist response back to slot-keyed booleans
+            const slotMap: Record<string, boolean> = {};
+            for (const [slotId, checklistKey] of Object.entries(SLOT_TO_CHECKLIST_KEY)) {
+              slotMap[slotId] = dbData[checklistKey] ?? false;
+            }
+            setDbChecklist(slotMap);
+          }
+        } catch {
+          // silently fall back
+        }
+      }
+    })();
   }, []);
 
-  const handleIncomeSummaryChange = (field: 'monthlyIncome' | 'savingsTotal' | 'monthlyExpenses', value: string) => {
+  const handleSaveChecklist = async () => {
+    if (!isLoggedIn) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    setChecklistSaveStatus('saving');
+    try {
+      // Build checklist from dbChecklist state (which reflects current UI)
+      const payload: Omit<DocumentChecklist, 'savedAt'> = { ...DEFAULT_CHECKLIST };
+      for (const [slotId, checklistKey] of Object.entries(SLOT_TO_CHECKLIST_KEY)) {
+        (payload as Record<string, boolean>)[checklistKey] = dbChecklist[slotId] ?? false;
+      }
+      await saveDocumentChecklist(payload);
+      setChecklistSaveStatus('saved');
+      setChecklistSavedAt(formatSavedAt(new Date().toISOString()));
+      setTimeout(() => setChecklistSaveStatus('idle'), 3000);
+    } catch {
+      setChecklistSaveStatus('error');
+      setTimeout(() => setChecklistSaveStatus('idle'), 3000);
+    }
+  };
+
+  const toggleDbChecklist = (slotId: string) => {
+    setDbChecklist(prev => ({ ...prev, [slotId]: !prev[slotId] }));
+  };
+
+  const handleIncomeSummaryChange = (field: 'monthlyIncome' | 'savingsTotal' | 'monthlyExpenses' | 'desiredHomePrice', value: string) => {
     const digits = value.replace(/[^0-9]/g, '');
     if (field === 'monthlyIncome') setMonthlyIncome(digits);
     else if (field === 'savingsTotal') setSavingsTotal(digits);
-    else setMonthlyExpenses(digits);
+    else if (field === 'monthlyExpenses') setMonthlyExpenses(digits);
+    else if (field === 'desiredHomePrice') setDesiredHomePrice(digits);
 
     const profile = getUserProfile() ?? { name: '', desiredHomePrice: '', creditScore: '', monthlyIncome: '', yearlyIncome: '', savingsTotal: '', monthlyExpenses: '', industry: '' };
     saveUserProfile({ ...profile, [field]: digits });
@@ -181,24 +290,60 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
   };
 
   return (
+    <>
+    <LoginPromptModal
+      open={showLoginPrompt}
+      onClose={() => setShowLoginPrompt(false)}
+      message="Log in to save your document checklist to your account."
+    />
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex-1 flex flex-col relative z-10 px-4 md:px-10 py-8"
     >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-white hover:bg-white/20 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-white">Gather Documents</h1>
-          <p className="text-white/60 text-sm mt-0.5">Upload your documents!</p>
-          <p className="text-white/60 text-sm">*Stored only locally</p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 flex-1">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-white hover:bg-white/20 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-white">Gather Documents</h1>
+            <p className="text-white/60 text-sm mt-0.5">Upload your documents!</p>
+            <p className="text-white/60 text-sm">* Files stored locally · checklist saved to account</p>
+          </div>
+        </div>
+
+        {/* Save checklist to cloud */}
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => void handleSaveChecklist()}
+            disabled={checklistSaveStatus === 'saving'}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shrink-0
+              ${checklistSaveStatus === 'saved' ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300' :
+                checklistSaveStatus === 'error' ? 'bg-[#bf8b85]/30 border border-[#bf8b85]/40 text-[#bf8b85]' :
+                'glass text-white hover:bg-white/20'}`}
+          >
+            {checklistSaveStatus === 'saving' ? (
+              <><Cloud className="w-4 h-4 animate-pulse" /> Saving...</>
+            ) : checklistSaveStatus === 'saved' ? (
+              <><CheckCircle className="w-4 h-4" /> Saved!</>
+            ) : checklistSaveStatus === 'error' ? (
+              <><AlertCircle className="w-4 h-4" /> Error saving</>
+            ) : (
+              <><Save className="w-4 h-4" /> Save Checklist</>
+            )}
+          </button>
+          {checklistSavedAt && (
+            <p className="text-white/40 text-xs">Last saved: {checklistSavedAt}</p>
+          )}
+          {!isLoggedIn && (
+            <p className="text-white/40 text-xs">Log in to save to your account</p>
+          )}
         </div>
       </div>
 
@@ -261,6 +406,17 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                   className="px-5 py-3 glass rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all text-base w-full"
                 />
               </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-white/90 text-base font-medium">Desired Home Price</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={desiredHomePrice}
+                  onChange={(e) => handleIncomeSummaryChange('desiredHomePrice', e.target.value)}
+                  placeholder="e.g. 350000"
+                  className="px-5 py-3 glass rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all text-base w-full"
+                />
+              </div>
             </div>
           </div>
         </motion.div>
@@ -314,24 +470,37 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                   >
                     <div className="px-8 pb-8 flex flex-col gap-4">
                       {section.note && (
-                        <p className="text-white/60 text-sm italic border-l-2 border-white/20 pl-4">
+                        <p className="text-white/60 text-base italic border-l-2 border-white/20 pl-4">
                           {section.note}
                         </p>
                       )}
 
                       {section.slots.map((slot) => {
                         const stored = files[slot.id];
+                        const isGathered = dbChecklist[slot.id] ?? false;
                         return (
                           <div key={slot.id} className="flex flex-col gap-2">
-                            <label className="text-white/90 text-base font-medium">{slot.label}</label>
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="text-white/90 text-base font-medium">{slot.label}</label>
+                              <button
+                                onClick={() => toggleDbChecklist(slot.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium shrink-0 transition-all
+                                  ${isGathered
+                                    ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300'
+                                    : 'glass text-white/40 hover:text-white/70'}`}
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                {isGathered ? 'Have it' : 'Mark ready'}
+                              </button>
+                            </div>
 
                             {stored ? (
                               /* File uploaded — show name + actions */
                               <div className="flex items-center gap-3 glass rounded-xl px-5 py-3">
                                 <File className="w-5 h-5 text-white/60 shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm font-medium truncate">{stored.name}</p>
-                                  <p className="text-white/50 text-xs">{formatBytes(stored.size)}</p>
+                                  <p className="text-white text-base font-medium truncate">{stored.name}</p>
+                                  <p className="text-white/50 text-sm">{formatBytes(stored.size)}</p>
                                 </div>
                                 <button
                                   onClick={() => setPreview(stored)}
@@ -364,7 +533,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                                 className="flex items-center gap-3 glass rounded-xl px-5 py-4 border border-dashed border-white/20 hover:bg-white/10 hover:border-white/40 transition-all text-left w-full"
                               >
                                 <Upload className="w-5 h-5 text-white/40 shrink-0" />
-                                <span className="text-white/50 text-sm">Click to upload a file</span>
+                                <span className="text-white/50 text-base">Click to upload a file</span>
                               </button>
                             )}
 
@@ -561,5 +730,6 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
         )}
       </AnimatePresence>
     </motion.div>
+    </>
   );
 }

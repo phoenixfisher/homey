@@ -4,8 +4,14 @@ import { motion } from 'motion/react';
 import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
-import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout } from '@/lib/auth';
-import { fetchUserProfile, updateUserProfile, type UpdateUserProfileRequest, type UserProfile } from '@/lib/profile';
+import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout, saveUserProfile } from '@/lib/auth';
+import {
+  applyUserProfileToLocalStorage,
+  fetchUserProfile,
+  updateUserProfile,
+  type UpdateUserProfileRequest,
+  type UserProfile,
+} from '@/lib/profile';
 
 const industries = [
   'Technology',
@@ -89,6 +95,8 @@ export function ProfilePage() {
           targetZipCode: loaded.targetZipCode ?? '',
           industryOfWork: loaded.industryOfWork ?? '',
         });
+
+        applyUserProfileToLocalStorage(loaded);
       } catch (err) {
         console.error(err);
         setError('Unable to load your profile right now.');
@@ -143,6 +151,19 @@ export function ProfilePage() {
     } finally {
       setSaving(false);
     }
+
+    // Mirror server profile data to localStorage so preapproval flows read the most recent values.
+    const existingLocalProfile = getUserProfile();
+    saveUserProfile({
+      name: `${form.firstName} ${form.lastName}`.trim(),
+      desiredHomePrice: form.desiredHomePrice,
+      creditScore: form.creditScore,
+      monthlyIncome: form.monthlyIncome,
+      yearlyIncome: existingLocalProfile?.yearlyIncome ?? '',
+      savingsTotal: form.totalSavings,
+      monthlyExpenses: form.monthlyExpenses,
+      industry: form.industryOfWork,
+    });
   };
 
   return (

@@ -17,6 +17,8 @@ builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -355,6 +357,462 @@ app.MapPut("/api/profile/me", (UpdateProfileRequest request, IDbConnection db, H
     httpContext.Session.SetString(UserSessionKey, JsonSerializer.Serialize(refreshedSession));
 
     return Results.Ok();
+});
+
+// ── Pre-Approval: Loan Application ──────────────────────────────────────────
+
+app.MapGet("/api/preapproval/loan-application", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT
+            loan_phone, loan_dependents,
+            loan_marital_status, loan_current_address, loan_current_address_years,
+            loan_previous_address, loan_rent_or_own, loan_monthly_housing_payment, loan_landlord_contact,
+            loan_employer_name, loan_employer_address, loan_job_title,
+            loan_employment_type, loan_start_date, loan_previous_employer, loan_employment_gaps,
+            loan_base_salary, loan_bonuses, loan_self_employ_income, loan_rental_income,
+            loan_other_income, loan_other_income_source,
+            loan_checking_balance, loan_savings_balance, loan_retirement_balance,
+            loan_investment_balance, loan_gift_funds, loan_real_estate_value, loan_other_assets,
+            loan_credit_card_payment, loan_student_loan_payment, loan_auto_loan_payment,
+            loan_child_support, loan_other_debt,
+            loan_decl_outstanding_judgments, loan_decl_bankruptcy, loan_decl_foreclosure,
+            loan_decl_lawsuit, loan_decl_cosigner, loan_decl_citizenship, loan_decl_primary_residence,
+            loan_saved_at
+        FROM preapproval_data
+        WHERE user_id = @user_id
+        LIMIT 1;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return Results.Ok((object?)null);
+
+        var result = new LoanApplicationResponse(
+            reader.IsDBNull(reader.GetOrdinal("loan_phone")) ? null : reader.GetString(reader.GetOrdinal("loan_phone")),
+            reader.IsDBNull(reader.GetOrdinal("loan_dependents")) ? null : reader.GetString(reader.GetOrdinal("loan_dependents")),
+            reader.IsDBNull(reader.GetOrdinal("loan_marital_status")) ? null : reader.GetString(reader.GetOrdinal("loan_marital_status")),
+            reader.IsDBNull(reader.GetOrdinal("loan_current_address")) ? null : reader.GetString(reader.GetOrdinal("loan_current_address")),
+            reader.IsDBNull(reader.GetOrdinal("loan_current_address_years")) ? null : reader.GetString(reader.GetOrdinal("loan_current_address_years")),
+            reader.IsDBNull(reader.GetOrdinal("loan_previous_address")) ? null : reader.GetString(reader.GetOrdinal("loan_previous_address")),
+            reader.IsDBNull(reader.GetOrdinal("loan_rent_or_own")) ? null : reader.GetString(reader.GetOrdinal("loan_rent_or_own")),
+            reader.IsDBNull(reader.GetOrdinal("loan_monthly_housing_payment")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_monthly_housing_payment")),
+            reader.IsDBNull(reader.GetOrdinal("loan_landlord_contact")) ? null : reader.GetString(reader.GetOrdinal("loan_landlord_contact")),
+            reader.IsDBNull(reader.GetOrdinal("loan_employer_name")) ? null : reader.GetString(reader.GetOrdinal("loan_employer_name")),
+            reader.IsDBNull(reader.GetOrdinal("loan_employer_address")) ? null : reader.GetString(reader.GetOrdinal("loan_employer_address")),
+            reader.IsDBNull(reader.GetOrdinal("loan_job_title")) ? null : reader.GetString(reader.GetOrdinal("loan_job_title")),
+            reader.IsDBNull(reader.GetOrdinal("loan_employment_type")) ? null : reader.GetString(reader.GetOrdinal("loan_employment_type")),
+            reader.IsDBNull(reader.GetOrdinal("loan_start_date")) ? null : reader.GetString(reader.GetOrdinal("loan_start_date")),
+            reader.IsDBNull(reader.GetOrdinal("loan_previous_employer")) ? null : reader.GetString(reader.GetOrdinal("loan_previous_employer")),
+            reader.IsDBNull(reader.GetOrdinal("loan_employment_gaps")) ? null : reader.GetString(reader.GetOrdinal("loan_employment_gaps")),
+            reader.IsDBNull(reader.GetOrdinal("loan_base_salary")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_base_salary")),
+            reader.IsDBNull(reader.GetOrdinal("loan_bonuses")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_bonuses")),
+            reader.IsDBNull(reader.GetOrdinal("loan_self_employ_income")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_self_employ_income")),
+            reader.IsDBNull(reader.GetOrdinal("loan_rental_income")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_rental_income")),
+            reader.IsDBNull(reader.GetOrdinal("loan_other_income")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_other_income")),
+            reader.IsDBNull(reader.GetOrdinal("loan_other_income_source")) ? null : reader.GetString(reader.GetOrdinal("loan_other_income_source")),
+            reader.IsDBNull(reader.GetOrdinal("loan_checking_balance")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_checking_balance")),
+            reader.IsDBNull(reader.GetOrdinal("loan_savings_balance")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_savings_balance")),
+            reader.IsDBNull(reader.GetOrdinal("loan_retirement_balance")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_retirement_balance")),
+            reader.IsDBNull(reader.GetOrdinal("loan_investment_balance")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_investment_balance")),
+            reader.IsDBNull(reader.GetOrdinal("loan_gift_funds")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_gift_funds")),
+            reader.IsDBNull(reader.GetOrdinal("loan_real_estate_value")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_real_estate_value")),
+            reader.IsDBNull(reader.GetOrdinal("loan_other_assets")) ? null : reader.GetString(reader.GetOrdinal("loan_other_assets")),
+            reader.IsDBNull(reader.GetOrdinal("loan_credit_card_payment")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_credit_card_payment")),
+            reader.IsDBNull(reader.GetOrdinal("loan_student_loan_payment")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_student_loan_payment")),
+            reader.IsDBNull(reader.GetOrdinal("loan_auto_loan_payment")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_auto_loan_payment")),
+            reader.IsDBNull(reader.GetOrdinal("loan_child_support")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_child_support")),
+            reader.IsDBNull(reader.GetOrdinal("loan_other_debt")) ? null : reader.GetDecimal(reader.GetOrdinal("loan_other_debt")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_outstanding_judgments")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_outstanding_judgments")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_bankruptcy")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_bankruptcy")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_foreclosure")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_foreclosure")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_lawsuit")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_lawsuit")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_cosigner")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_cosigner")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_citizenship")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_citizenship")),
+            reader.IsDBNull(reader.GetOrdinal("loan_decl_primary_residence")) ? null : reader.GetString(reader.GetOrdinal("loan_decl_primary_residence")),
+            reader.IsDBNull(reader.GetOrdinal("loan_saved_at")) ? null : reader.GetDateTime(reader.GetOrdinal("loan_saved_at"))
+        );
+        return Results.Ok(result);
+    }
+});
+
+app.MapPut("/api/preapproval/loan-application", (SaveLoanApplicationRequest request, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        INSERT INTO preapproval_data (
+            user_id,
+            loan_phone, loan_dependents,
+            loan_marital_status, loan_current_address, loan_current_address_years,
+            loan_previous_address, loan_rent_or_own, loan_monthly_housing_payment, loan_landlord_contact,
+            loan_employer_name, loan_employer_address, loan_job_title,
+            loan_employment_type, loan_start_date, loan_previous_employer, loan_employment_gaps,
+            loan_base_salary, loan_bonuses, loan_self_employ_income, loan_rental_income,
+            loan_other_income, loan_other_income_source,
+            loan_checking_balance, loan_savings_balance, loan_retirement_balance,
+            loan_investment_balance, loan_gift_funds, loan_real_estate_value, loan_other_assets,
+            loan_credit_card_payment, loan_student_loan_payment, loan_auto_loan_payment,
+            loan_child_support, loan_other_debt,
+            loan_decl_outstanding_judgments, loan_decl_bankruptcy, loan_decl_foreclosure,
+            loan_decl_lawsuit, loan_decl_cosigner, loan_decl_citizenship, loan_decl_primary_residence,
+            loan_saved_at
+        ) VALUES (
+            @user_id,
+            @loan_phone, @loan_dependents,
+            @loan_marital_status, @loan_current_address, @loan_current_address_years,
+            @loan_previous_address, @loan_rent_or_own, @loan_monthly_housing_payment, @loan_landlord_contact,
+            @loan_employer_name, @loan_employer_address, @loan_job_title,
+            @loan_employment_type, @loan_start_date, @loan_previous_employer, @loan_employment_gaps,
+            @loan_base_salary, @loan_bonuses, @loan_self_employ_income, @loan_rental_income,
+            @loan_other_income, @loan_other_income_source,
+            @loan_checking_balance, @loan_savings_balance, @loan_retirement_balance,
+            @loan_investment_balance, @loan_gift_funds, @loan_real_estate_value, @loan_other_assets,
+            @loan_credit_card_payment, @loan_student_loan_payment, @loan_auto_loan_payment,
+            @loan_child_support, @loan_other_debt,
+            @loan_decl_outstanding_judgments, @loan_decl_bankruptcy, @loan_decl_foreclosure,
+            @loan_decl_lawsuit, @loan_decl_cosigner, @loan_decl_citizenship, @loan_decl_primary_residence,
+            UTC_TIMESTAMP()
+        )
+        ON DUPLICATE KEY UPDATE
+            loan_phone = @loan_phone,
+            loan_dependents = @loan_dependents,
+            loan_marital_status = @loan_marital_status,
+            loan_current_address = @loan_current_address,
+            loan_current_address_years = @loan_current_address_years,
+            loan_previous_address = @loan_previous_address,
+            loan_rent_or_own = @loan_rent_or_own,
+            loan_monthly_housing_payment = @loan_monthly_housing_payment,
+            loan_landlord_contact = @loan_landlord_contact,
+            loan_employer_name = @loan_employer_name,
+            loan_employer_address = @loan_employer_address,
+            loan_job_title = @loan_job_title,
+            loan_employment_type = @loan_employment_type,
+            loan_start_date = @loan_start_date,
+            loan_previous_employer = @loan_previous_employer,
+            loan_employment_gaps = @loan_employment_gaps,
+            loan_base_salary = @loan_base_salary,
+            loan_bonuses = @loan_bonuses,
+            loan_self_employ_income = @loan_self_employ_income,
+            loan_rental_income = @loan_rental_income,
+            loan_other_income = @loan_other_income,
+            loan_other_income_source = @loan_other_income_source,
+            loan_checking_balance = @loan_checking_balance,
+            loan_savings_balance = @loan_savings_balance,
+            loan_retirement_balance = @loan_retirement_balance,
+            loan_investment_balance = @loan_investment_balance,
+            loan_gift_funds = @loan_gift_funds,
+            loan_real_estate_value = @loan_real_estate_value,
+            loan_other_assets = @loan_other_assets,
+            loan_credit_card_payment = @loan_credit_card_payment,
+            loan_student_loan_payment = @loan_student_loan_payment,
+            loan_auto_loan_payment = @loan_auto_loan_payment,
+            loan_child_support = @loan_child_support,
+            loan_other_debt = @loan_other_debt,
+            loan_decl_outstanding_judgments = @loan_decl_outstanding_judgments,
+            loan_decl_bankruptcy = @loan_decl_bankruptcy,
+            loan_decl_foreclosure = @loan_decl_foreclosure,
+            loan_decl_lawsuit = @loan_decl_lawsuit,
+            loan_decl_cosigner = @loan_decl_cosigner,
+            loan_decl_citizenship = @loan_decl_citizenship,
+            loan_decl_primary_residence = @loan_decl_primary_residence,
+            loan_saved_at = UTC_TIMESTAMP();
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@loan_phone", string.IsNullOrWhiteSpace(request.Phone) ? DBNull.Value : request.Phone));
+        cmd.Parameters.Add(new MySqlParameter("@loan_dependents", string.IsNullOrWhiteSpace(request.Dependents) ? DBNull.Value : request.Dependents));
+        cmd.Parameters.Add(new MySqlParameter("@loan_marital_status", string.IsNullOrWhiteSpace(request.MaritalStatus) ? DBNull.Value : request.MaritalStatus));
+        cmd.Parameters.Add(new MySqlParameter("@loan_current_address", string.IsNullOrWhiteSpace(request.CurrentAddress) ? DBNull.Value : request.CurrentAddress));
+        cmd.Parameters.Add(new MySqlParameter("@loan_current_address_years", string.IsNullOrWhiteSpace(request.CurrentAddressYears) ? DBNull.Value : request.CurrentAddressYears));
+        cmd.Parameters.Add(new MySqlParameter("@loan_previous_address", string.IsNullOrWhiteSpace(request.PreviousAddress) ? DBNull.Value : request.PreviousAddress));
+        cmd.Parameters.Add(new MySqlParameter("@loan_rent_or_own", string.IsNullOrWhiteSpace(request.RentOrOwn) ? DBNull.Value : request.RentOrOwn));
+        cmd.Parameters.Add(new MySqlParameter("@loan_monthly_housing_payment", request.MonthlyHousingPayment ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_landlord_contact", string.IsNullOrWhiteSpace(request.LandlordContact) ? DBNull.Value : request.LandlordContact));
+        cmd.Parameters.Add(new MySqlParameter("@loan_employer_name", string.IsNullOrWhiteSpace(request.EmployerName) ? DBNull.Value : request.EmployerName));
+        cmd.Parameters.Add(new MySqlParameter("@loan_employer_address", string.IsNullOrWhiteSpace(request.EmployerAddress) ? DBNull.Value : request.EmployerAddress));
+        cmd.Parameters.Add(new MySqlParameter("@loan_job_title", string.IsNullOrWhiteSpace(request.JobTitle) ? DBNull.Value : request.JobTitle));
+        cmd.Parameters.Add(new MySqlParameter("@loan_employment_type", string.IsNullOrWhiteSpace(request.EmploymentType) ? DBNull.Value : request.EmploymentType));
+        cmd.Parameters.Add(new MySqlParameter("@loan_start_date", string.IsNullOrWhiteSpace(request.StartDate) ? DBNull.Value : request.StartDate));
+        cmd.Parameters.Add(new MySqlParameter("@loan_previous_employer", string.IsNullOrWhiteSpace(request.PreviousEmployer) ? DBNull.Value : request.PreviousEmployer));
+        cmd.Parameters.Add(new MySqlParameter("@loan_employment_gaps", string.IsNullOrWhiteSpace(request.EmploymentGaps) ? DBNull.Value : request.EmploymentGaps));
+        cmd.Parameters.Add(new MySqlParameter("@loan_base_salary", request.BaseSalary ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_bonuses", request.Bonuses ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_self_employ_income", request.SelfEmployIncome ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_rental_income", request.RentalIncome ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_other_income", request.OtherIncome ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_other_income_source", string.IsNullOrWhiteSpace(request.OtherIncomeSource) ? DBNull.Value : request.OtherIncomeSource));
+        cmd.Parameters.Add(new MySqlParameter("@loan_checking_balance", request.CheckingBalance ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_savings_balance", request.SavingsBalance ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_retirement_balance", request.RetirementBalance ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_investment_balance", request.InvestmentBalance ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_gift_funds", request.GiftFunds ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_real_estate_value", request.RealEstateValue ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_other_assets", string.IsNullOrWhiteSpace(request.OtherAssets) ? DBNull.Value : request.OtherAssets));
+        cmd.Parameters.Add(new MySqlParameter("@loan_credit_card_payment", request.CreditCardPayment ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_student_loan_payment", request.StudentLoanPayment ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_auto_loan_payment", request.AutoLoanPayment ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_child_support", request.ChildSupport ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_other_debt", request.OtherDebt ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_outstanding_judgments", string.IsNullOrWhiteSpace(request.DeclOutstandingJudgments) ? DBNull.Value : request.DeclOutstandingJudgments));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_bankruptcy", string.IsNullOrWhiteSpace(request.DeclBankruptcy) ? DBNull.Value : request.DeclBankruptcy));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_foreclosure", string.IsNullOrWhiteSpace(request.DeclForeclosure) ? DBNull.Value : request.DeclForeclosure));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_lawsuit", string.IsNullOrWhiteSpace(request.DeclLawsuit) ? DBNull.Value : request.DeclLawsuit));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_cosigner", string.IsNullOrWhiteSpace(request.DeclCosigner) ? DBNull.Value : request.DeclCosigner));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_citizenship", string.IsNullOrWhiteSpace(request.DeclCitizenship) ? DBNull.Value : request.DeclCitizenship));
+        cmd.Parameters.Add(new MySqlParameter("@loan_decl_primary_residence", string.IsNullOrWhiteSpace(request.DeclPrimaryResidence) ? DBNull.Value : request.DeclPrimaryResidence));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
+// ── Pre-Approval: Document Checklist ────────────────────────────────────────
+
+app.MapGet("/api/preapproval/documents", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT
+            doc_paystub_1, doc_paystub_2, doc_paystub_eoy_1, doc_paystub_eoy_2,
+            doc_tax_1, doc_tax_2, doc_w2_year1, doc_w2_year2, doc_gov_id,
+            doc_bank_1, doc_bank_2, doc_bank_3, doc_bank_4, doc_saved_at
+        FROM preapproval_data
+        WHERE user_id = @user_id
+        LIMIT 1;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return Results.Ok((object?)null);
+
+        var result = new DocumentChecklistResponse(
+            reader.GetBoolean(reader.GetOrdinal("doc_paystub_1")),
+            reader.GetBoolean(reader.GetOrdinal("doc_paystub_2")),
+            reader.GetBoolean(reader.GetOrdinal("doc_paystub_eoy_1")),
+            reader.GetBoolean(reader.GetOrdinal("doc_paystub_eoy_2")),
+            reader.GetBoolean(reader.GetOrdinal("doc_tax_1")),
+            reader.GetBoolean(reader.GetOrdinal("doc_tax_2")),
+            reader.GetBoolean(reader.GetOrdinal("doc_w2_year1")),
+            reader.GetBoolean(reader.GetOrdinal("doc_w2_year2")),
+            reader.GetBoolean(reader.GetOrdinal("doc_gov_id")),
+            reader.GetBoolean(reader.GetOrdinal("doc_bank_1")),
+            reader.GetBoolean(reader.GetOrdinal("doc_bank_2")),
+            reader.GetBoolean(reader.GetOrdinal("doc_bank_3")),
+            reader.GetBoolean(reader.GetOrdinal("doc_bank_4")),
+            reader.IsDBNull(reader.GetOrdinal("doc_saved_at")) ? null : reader.GetDateTime(reader.GetOrdinal("doc_saved_at"))
+        );
+        return Results.Ok(result);
+    }
+});
+
+app.MapPut("/api/preapproval/documents", (SaveDocumentChecklistRequest request, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        INSERT INTO preapproval_data (
+            user_id,
+            doc_paystub_1, doc_paystub_2, doc_paystub_eoy_1, doc_paystub_eoy_2,
+            doc_tax_1, doc_tax_2, doc_w2_year1, doc_w2_year2, doc_gov_id,
+            doc_bank_1, doc_bank_2, doc_bank_3, doc_bank_4, doc_saved_at
+        ) VALUES (
+            @user_id,
+            @doc_paystub_1, @doc_paystub_2, @doc_paystub_eoy_1, @doc_paystub_eoy_2,
+            @doc_tax_1, @doc_tax_2, @doc_w2_year1, @doc_w2_year2, @doc_gov_id,
+            @doc_bank_1, @doc_bank_2, @doc_bank_3, @doc_bank_4, UTC_TIMESTAMP()
+        )
+        ON DUPLICATE KEY UPDATE
+            doc_paystub_1 = @doc_paystub_1, doc_paystub_2 = @doc_paystub_2,
+            doc_paystub_eoy_1 = @doc_paystub_eoy_1, doc_paystub_eoy_2 = @doc_paystub_eoy_2,
+            doc_tax_1 = @doc_tax_1, doc_tax_2 = @doc_tax_2,
+            doc_w2_year1 = @doc_w2_year1, doc_w2_year2 = @doc_w2_year2,
+            doc_gov_id = @doc_gov_id,
+            doc_bank_1 = @doc_bank_1, doc_bank_2 = @doc_bank_2,
+            doc_bank_3 = @doc_bank_3, doc_bank_4 = @doc_bank_4,
+            doc_saved_at = UTC_TIMESTAMP();
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@doc_paystub_1", request.Paystub1));
+        cmd.Parameters.Add(new MySqlParameter("@doc_paystub_2", request.Paystub2));
+        cmd.Parameters.Add(new MySqlParameter("@doc_paystub_eoy_1", request.PaystubEoy1));
+        cmd.Parameters.Add(new MySqlParameter("@doc_paystub_eoy_2", request.PaystubEoy2));
+        cmd.Parameters.Add(new MySqlParameter("@doc_tax_1", request.Tax1));
+        cmd.Parameters.Add(new MySqlParameter("@doc_tax_2", request.Tax2));
+        cmd.Parameters.Add(new MySqlParameter("@doc_w2_year1", request.W2Year1));
+        cmd.Parameters.Add(new MySqlParameter("@doc_w2_year2", request.W2Year2));
+        cmd.Parameters.Add(new MySqlParameter("@doc_gov_id", request.GovId));
+        cmd.Parameters.Add(new MySqlParameter("@doc_bank_1", request.Bank1));
+        cmd.Parameters.Add(new MySqlParameter("@doc_bank_2", request.Bank2));
+        cmd.Parameters.Add(new MySqlParameter("@doc_bank_3", request.Bank3));
+        cmd.Parameters.Add(new MySqlParameter("@doc_bank_4", request.Bank4));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
+// ── Pre-Approval: Qualification Snapshot ────────────────────────────────────
+
+app.MapGet("/api/preapproval/qualification", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT snap_dti, snap_credit_score, snap_monthly_income,
+               snap_monthly_expenses, snap_savings, snap_down_payment_pct, snap_saved_at
+        FROM preapproval_data
+        WHERE user_id = @user_id
+        LIMIT 1;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return Results.Ok((object?)null);
+
+        var snapSavedAt = reader.IsDBNull(reader.GetOrdinal("snap_saved_at")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("snap_saved_at"));
+        if (snapSavedAt is null) return Results.Ok((object?)null);
+
+        var result = new QualificationSnapshotResponse(
+            reader.IsDBNull(reader.GetOrdinal("snap_dti")) ? null : reader.GetDecimal(reader.GetOrdinal("snap_dti")),
+            reader.IsDBNull(reader.GetOrdinal("snap_credit_score")) ? null : Convert.ToUInt16(reader.GetValue(reader.GetOrdinal("snap_credit_score"))),
+            reader.IsDBNull(reader.GetOrdinal("snap_monthly_income")) ? null : reader.GetDecimal(reader.GetOrdinal("snap_monthly_income")),
+            reader.IsDBNull(reader.GetOrdinal("snap_monthly_expenses")) ? null : reader.GetDecimal(reader.GetOrdinal("snap_monthly_expenses")),
+            reader.IsDBNull(reader.GetOrdinal("snap_savings")) ? null : reader.GetDecimal(reader.GetOrdinal("snap_savings")),
+            reader.IsDBNull(reader.GetOrdinal("snap_down_payment_pct")) ? null : reader.GetDecimal(reader.GetOrdinal("snap_down_payment_pct")),
+            snapSavedAt
+        );
+        return Results.Ok(result);
+    }
+});
+
+app.MapPut("/api/preapproval/qualification", (SaveQualificationSnapshotRequest request, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        INSERT INTO preapproval_data (
+            user_id, snap_dti, snap_credit_score, snap_monthly_income,
+            snap_monthly_expenses, snap_savings, snap_down_payment_pct, snap_saved_at
+        ) VALUES (
+            @user_id, @snap_dti, @snap_credit_score, @snap_monthly_income,
+            @snap_monthly_expenses, @snap_savings, @snap_down_payment_pct, UTC_TIMESTAMP()
+        )
+        ON DUPLICATE KEY UPDATE
+            snap_dti = @snap_dti,
+            snap_credit_score = @snap_credit_score,
+            snap_monthly_income = @snap_monthly_income,
+            snap_monthly_expenses = @snap_monthly_expenses,
+            snap_savings = @snap_savings,
+            snap_down_payment_pct = @snap_down_payment_pct,
+            snap_saved_at = UTC_TIMESTAMP();
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@snap_dti", request.Dti ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@snap_credit_score", request.CreditScore ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@snap_monthly_income", request.MonthlyIncome ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@snap_monthly_expenses", request.MonthlyExpenses ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@snap_savings", request.Savings ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@snap_down_payment_pct", request.DownPaymentPct ?? (object)DBNull.Value));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
+// ── Pre-Approval: Mark Stage Complete ───────────────────────────────────────
+
+app.MapPost("/api/preapproval/complete", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        INSERT INTO user_progress (user_id, stage, completed, completed_at)
+        VALUES (@user_id, 'Pre-Approval', TRUE, UTC_TIMESTAMP())
+        ON DUPLICATE KEY UPDATE
+            completed = TRUE,
+            completed_at = UTC_TIMESTAMP();
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/preapproval/complete", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT completed, completed_at
+        FROM user_progress
+        WHERE user_id = @user_id AND stage = 'Pre-Approval'
+        LIMIT 1;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return Results.Ok(new { completed = false, completedAt = (DateTime?)null });
+
+        var completed = reader.GetBoolean(reader.GetOrdinal("completed"));
+        var completedAt = reader.IsDBNull(reader.GetOrdinal("completed_at")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("completed_at"));
+        return Results.Ok(new { completed, completedAt });
+    }
 });
 
 app.MapGet("/api/homes/search", async (string zip, IDbConnection db, HttpContext httpContext) =>
@@ -801,4 +1259,63 @@ public record HomesGroupedResult(
     List<HomeListing> WithinRange,
     List<HomeListing> SlightlyAboveRange,
     List<HomeListing> BelowComfortRange
+);
+
+// ── Pre-Approval Records ─────────────────────────────────────────────────────
+
+public record LoanApplicationResponse(
+    string? Phone, string? Dependents,
+    string? MaritalStatus, string? CurrentAddress, string? CurrentAddressYears,
+    string? PreviousAddress, string? RentOrOwn, decimal? MonthlyHousingPayment, string? LandlordContact,
+    string? EmployerName, string? EmployerAddress, string? JobTitle,
+    string? EmploymentType, string? StartDate, string? PreviousEmployer, string? EmploymentGaps,
+    decimal? BaseSalary, decimal? Bonuses, decimal? SelfEmployIncome, decimal? RentalIncome,
+    decimal? OtherIncome, string? OtherIncomeSource,
+    decimal? CheckingBalance, decimal? SavingsBalance, decimal? RetirementBalance,
+    decimal? InvestmentBalance, decimal? GiftFunds, decimal? RealEstateValue, string? OtherAssets,
+    decimal? CreditCardPayment, decimal? StudentLoanPayment, decimal? AutoLoanPayment,
+    decimal? ChildSupport, decimal? OtherDebt,
+    string? DeclOutstandingJudgments, string? DeclBankruptcy, string? DeclForeclosure,
+    string? DeclLawsuit, string? DeclCosigner, string? DeclCitizenship, string? DeclPrimaryResidence,
+    DateTime? SavedAt
+);
+
+public record SaveLoanApplicationRequest(
+    string? Phone, string? Dependents,
+    string? MaritalStatus, string? CurrentAddress, string? CurrentAddressYears,
+    string? PreviousAddress, string? RentOrOwn, decimal? MonthlyHousingPayment, string? LandlordContact,
+    string? EmployerName, string? EmployerAddress, string? JobTitle,
+    string? EmploymentType, string? StartDate, string? PreviousEmployer, string? EmploymentGaps,
+    decimal? BaseSalary, decimal? Bonuses, decimal? SelfEmployIncome, decimal? RentalIncome,
+    decimal? OtherIncome, string? OtherIncomeSource,
+    decimal? CheckingBalance, decimal? SavingsBalance, decimal? RetirementBalance,
+    decimal? InvestmentBalance, decimal? GiftFunds, decimal? RealEstateValue, string? OtherAssets,
+    decimal? CreditCardPayment, decimal? StudentLoanPayment, decimal? AutoLoanPayment,
+    decimal? ChildSupport, decimal? OtherDebt,
+    string? DeclOutstandingJudgments, string? DeclBankruptcy, string? DeclForeclosure,
+    string? DeclLawsuit, string? DeclCosigner, string? DeclCitizenship, string? DeclPrimaryResidence
+);
+
+public record DocumentChecklistResponse(
+    bool Paystub1, bool Paystub2, bool PaystubEoy1, bool PaystubEoy2,
+    bool Tax1, bool Tax2, bool W2Year1, bool W2Year2, bool GovId,
+    bool Bank1, bool Bank2, bool Bank3, bool Bank4,
+    DateTime? SavedAt
+);
+
+public record SaveDocumentChecklistRequest(
+    bool Paystub1, bool Paystub2, bool PaystubEoy1, bool PaystubEoy2,
+    bool Tax1, bool Tax2, bool W2Year1, bool W2Year2, bool GovId,
+    bool Bank1, bool Bank2, bool Bank3, bool Bank4
+);
+
+public record QualificationSnapshotResponse(
+    decimal? Dti, ushort? CreditScore, decimal? MonthlyIncome,
+    decimal? MonthlyExpenses, decimal? Savings, decimal? DownPaymentPct,
+    DateTime? SavedAt
+);
+
+public record SaveQualificationSnapshotRequest(
+    decimal? Dti, ushort? CreditScore, decimal? MonthlyIncome,
+    decimal? MonthlyExpenses, decimal? Savings, decimal? DownPaymentPct
 );

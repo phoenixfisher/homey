@@ -191,11 +191,11 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                   <VerdictIcon verdict={creditVerdict} />
                 </div>
-                <div className="text-white/60 text-sm mb-1">Credit Score</div>
+                <div className="text-white/60 text-base mb-1">Credit Score</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {isNoCredit ? 'No Credit' : profile.creditScore}
                 </div>
-                <div className={`text-sm ${verdictText(creditVerdict)}`}>
+                <div className={`text-base ${verdictText(creditVerdict)}`}>
                   {isNoCredit
                     ? 'No credit history on file'
                     : creditScore >= 700
@@ -214,11 +214,11 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                   <VerdictIcon verdict={incomeVerdict} />
                 </div>
-                <div className="text-white/60 text-sm mb-1">Monthly Income</div>
+                <div className="text-white/60 text-base mb-1">Monthly Income</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   ${monthlyIncome.toLocaleString()}
                 </div>
-                <div className={`text-sm ${verdictText(incomeVerdict)}`}>
+                <div className={`text-base ${verdictText(incomeVerdict)}`}>
                   {monthlyIncome >= 5000
                     ? 'Strong income for mortgage approval'
                     : monthlyIncome >= 3000
@@ -235,11 +235,11 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                   <VerdictIcon verdict={dtiVerdict} />
                 </div>
-                <div className="text-white/60 text-sm mb-1">DTI Ratio</div>
+                <div className="text-white/60 text-base mb-1">DTI Ratio</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {monthlyIncome > 0 ? `${dtiRatio.toFixed(1)}%` : 'N/A'}
                 </div>
-                <div className={`text-sm ${verdictText(dtiVerdict)}`}>
+                <div className={`text-base ${verdictText(dtiVerdict)}`}>
                   {dtiRatio < 36
                     ? 'Healthy — well within lender limits'
                     : dtiRatio <= 43
@@ -256,11 +256,11 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                   <VerdictIcon verdict={downVerdict} />
                 </div>
-                <div className="text-white/60 text-sm mb-1">Down Payment Readiness</div>
+                <div className="text-white/60 text-base mb-1">Down Payment Readiness</div>
                 <div className="text-2xl font-bold text-white mb-1">
                   {desiredHomePrice > 0 ? `${downPaymentPct.toFixed(1)}%` : 'N/A'}
                 </div>
-                <div className={`text-sm ${verdictText(downVerdict)}`}>
+                <div className={`text-base ${verdictText(downVerdict)}`}>
                   {downPaymentPct >= 20
                     ? 'Ideal — avoids PMI entirely'
                     : downPaymentPct >= 10
@@ -295,10 +295,10 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                 )}
                 <h3 className="text-xl font-bold text-white mb-2">Conventional</h3>
-                <p className="text-white/70 text-sm mb-4">
+                <p className="text-white/70 text-base mb-4">
                   The standard mortgage loan backed by Fannie Mae or Freddie Mac.
                 </p>
-                <ul className="space-y-2 text-sm text-white/80">
+                <ul className="space-y-2 text-base text-white/80">
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-[#bdc4a7]" />
                     Best for credit 620+
@@ -328,10 +328,10 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                 )}
                 <h3 className="text-xl font-bold text-white mb-2">FHA</h3>
-                <p className="text-white/70 text-sm mb-4">
+                <p className="text-white/70 text-base mb-4">
                   Government-backed loan designed for buyers with lower credit or smaller down payments.
                 </p>
-                <ul className="space-y-2 text-sm text-white/80">
+                <ul className="space-y-2 text-base text-white/80">
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-[#92b4a7]" />
                     Best for credit 580+
@@ -361,10 +361,10 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </div>
                 )}
                 <h3 className="text-xl font-bold text-white mb-2">VA / USDA</h3>
-                <p className="text-white/70 text-sm mb-4">
+                <p className="text-white/70 text-base mb-4">
                   Specialized programs for veterans or buyers in rural/suburban areas.
                 </p>
-                <ul className="space-y-2 text-sm text-white/80">
+                <ul className="space-y-2 text-base text-white/80">
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-[#bf8b85]" />
                     Veterans or rural buyers
@@ -423,7 +423,7 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                 <div className="text-4xl font-bold text-white">
                   {monthlyIncome > 0 ? `${dtiRatio.toFixed(1)}%` : 'N/A'}
                 </div>
-                <div className={`text-sm mt-1 ${verdictText(dtiVerdict)}`}>
+                <div className={`text-base mt-1 ${verdictText(dtiVerdict)}`}>
                   {dtiRatio < 28
                     ? 'Excellent — lenders love this range'
                     : dtiRatio < 36
@@ -452,16 +452,16 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
             <div className="glass rounded-2xl p-4">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-white/60 text-xs mb-1">Monthly Expenses</div>
+                  <div className="text-white/60 text-sm mb-1">Monthly Expenses</div>
                   <div className="text-white font-semibold">${monthlyExpenses.toLocaleString()}</div>
                 </div>
                 <div className="flex items-center justify-center text-white/40 text-xl">÷</div>
                 <div>
-                  <div className="text-white/60 text-xs mb-1">Monthly Income</div>
+                  <div className="text-white/60 text-sm mb-1">Monthly Income</div>
                   <div className="text-white font-semibold">${monthlyIncome.toLocaleString()}</div>
                 </div>
               </div>
-              <div className="text-center mt-3 text-white/60 text-sm">
+              <div className="text-center mt-3 text-white/60 text-base">
                 = {monthlyIncome > 0 ? `${dtiRatio.toFixed(1)}%` : 'N/A'} DTI
               </div>
             </div>
@@ -501,22 +501,22 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                           const isSelected = quizAnswers[qIdx] === opt;
                           const isCorrect = opt === q.correct;
                           let optClass =
-                            'glass rounded-xl px-4 py-2.5 text-sm text-white/80 text-left transition-all hover:bg-white/10 cursor-pointer';
+                            'glass rounded-xl px-4 py-2.5 text-base text-white/80 text-left transition-all hover:bg-white/10 cursor-pointer';
 
                           if (quizSubmitted) {
                             if (isCorrect) {
                               optClass =
-                                'rounded-xl px-4 py-2.5 text-sm text-left bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 cursor-default';
+                                'rounded-xl px-4 py-2.5 text-base text-left bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 cursor-default';
                             } else if (isSelected && !isCorrect) {
                               optClass =
-                                'rounded-xl px-4 py-2.5 text-sm text-left bg-[#bf8b85]/20 border border-[#bf8b85]/40 text-[#bf8b85] cursor-default';
+                                'rounded-xl px-4 py-2.5 text-base text-left bg-[#bf8b85]/20 border border-[#bf8b85]/40 text-[#bf8b85] cursor-default';
                             } else {
                               optClass =
-                                'rounded-xl px-4 py-2.5 text-sm text-left glass text-white/40 cursor-default';
+                                'rounded-xl px-4 py-2.5 text-base text-left glass text-white/40 cursor-default';
                             }
                           } else if (isSelected) {
                             optClass =
-                              'rounded-xl px-4 py-2.5 text-sm text-left bg-[#3e78b2]/40 border border-white/40 text-white cursor-pointer';
+                              'rounded-xl px-4 py-2.5 text-base text-left bg-[#3e78b2]/40 border border-white/40 text-white cursor-pointer';
                           }
 
                           return (
@@ -532,7 +532,7 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                         })}
                       </div>
                       {quizSubmitted && quizAnswers[qIdx] !== q.correct && (
-                        <p className="text-xs text-[#bf8b85] mt-2">
+                        <p className="text-sm text-[#bf8b85] mt-2">
                           Correct answer: <span className="font-semibold">{q.correct}</span>
                         </p>
                       )}
@@ -551,7 +551,7 @@ export function PreApprovalQuest1({ profile, onComplete }: PreApprovalQuest1Prop
                   </button>
                 ) : quizResult === 'fail' ? (
                   <div className="mt-6 text-center">
-                    <p className="text-[#bf8b85] mb-4">
+                    <p className="text-[#bf8b85] text-base mb-4">
                       Some answers were incorrect. Review the explanations above and try again.
                     </p>
                     <button

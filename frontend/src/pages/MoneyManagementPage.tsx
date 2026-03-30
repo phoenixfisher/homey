@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
   ArrowRight,
-  DollarSign,
+  DollarSign, 
   PiggyBank,
   Receipt,
   Target,
   TrendingUp,
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
+import { GettingStartedModal } from '@/components/GettingStartedModal';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import {
@@ -21,6 +22,7 @@ import {
   type HomeyUserProfile,
   type SessionUser,
 } from '@/lib/auth';
+import { hydrateLocalProfileFromServer, profileHasTargetPriceAndMonthlyBudget } from '@/lib/profile';
 
 const STORAGE_KEY = 'homeyMoneyManagementSettings';
 
@@ -58,12 +60,17 @@ export function MoneyManagementPage() {
   const [savedSettings, setSavedSettings] = useState<MoneySettings>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState('');
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
 
   useEffect(() => {
     void (async () => {
       const user = await fetchSessionUser();
       setSessionUser(user);
       setIsAuthenticated(!!user || getIsLoggedIn());
+
+      if (user) {
+        await hydrateLocalProfileFromServer();
+      }
 
       const savedProfile = getUserProfile();
       if (savedProfile) {
@@ -133,6 +140,60 @@ export function MoneyManagementPage() {
     setIsAuthenticated(false);
     void navigate('/');
   };
+
+  if (
+    isProfileLoaded &&
+    (!profile || !profileHasTargetPriceAndMonthlyBudget(profile))
+  ) {
+    return (
+      <>
+      <AppLayout>
+        <MainNav
+          active="money-management"
+          isLoggedIn={isAuthenticated}
+          rightContent={(
+            <AuthHeaderActions
+              isLoggedIn={isAuthenticated}
+              firstName={sessionUser?.firstName ?? null}
+              onAuthClick={handleLogout}
+            />
+          )}
+        />
+        <main className="flex-1 p-4 md:p-8 relative">
+          <div className="max-w-3xl mx-auto relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-8 md:p-10 text-center"
+            >
+              <h1 className="text-3xl md:text-4xl text-white mb-4">Set up your profile first</h1>
+              <p className="text-white/75 max-w-2xl mx-auto mb-6">
+                Money Management needs a target home price and your monthly income and expenses so your
+                monthly budget can be calculated. Use Get Started below to enter your details.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowGettingStarted(true)}
+                className="px-4 py-2 bg-white text-[#3e78b2] rounded-xl hover:bg-white/90 transition-all"
+              >
+                Get Started
+              </button>
+            </motion.div>
+          </div>
+        </main>
+      </AppLayout>
+      <GettingStartedModal
+        open={showGettingStarted}
+        onClose={() => setShowGettingStarted(false)}
+        sessionUser={sessionUser}
+        onCompleted={async () => {
+          await hydrateLocalProfileFromServer();
+          setProfile(getUserProfile());
+        }}
+      />
+    </>
+    );
+  }
 
   if (!profile) return null;
 

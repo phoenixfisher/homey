@@ -31,6 +31,16 @@ const router = createBrowserRouter([
       { path: '/page4',            Component: PlaceHolder4 },
     ],
   },
+
+const router = createBrowserRouter([
+  { path: '/',              Component: HomePage },
+  { path: '/dashboard',     Component: DashboardPage },
+  { path: '/login',         Component: LoginPage },
+  { path: '/money-management', Component: MoneyManagementPage },
+  { path: '/pre-approval',  Component: PreApprovalPage },
+  { path: '/learning',      Component: LearningPage },
+  { path: '/profile',       Component: ProfilePage },
+  { path: '/homes',         Component: HomesPage },
 ]);
 
 export default function App() {
