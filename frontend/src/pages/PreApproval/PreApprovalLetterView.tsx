@@ -11,6 +11,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { fetchSessionUser } from '@/lib/auth';
+import { fetchUserProfile } from '@/lib/profile';
 import {
   fetchPreApprovalCompletion,
   markPreApprovalComplete,
@@ -18,22 +19,14 @@ import {
 } from '@/lib/preapproval';
 import { LoginPromptModal } from '@/components/LoginPromptModal';
 
-interface Profile {
-  name?: string;
-  creditScore?: string;
-  monthlyIncome?: string;
-  monthlyExpenses?: string;
-  desiredHomePrice?: string;
-}
-
 interface Props {
   onBack: () => void;
 }
 
 function getLoanType(creditScore: number): string {
-  if (creditScore >= 620) return 'Conventional';
-  if (creditScore >= 580) return 'FHA';
-  return 'FHA / Specialty';
+  if (creditScore >= 620) return '30-Year Fixed Conventional';
+  if (creditScore >= 580) return '30-Year Fixed FHA';
+  return '30-Year Fixed FHA / Specialty';
 }
 
 function getExpirationDate(): string {
@@ -43,8 +36,9 @@ function getExpirationDate(): string {
 }
 
 export function PreApprovalLetterView({ onBack }: Props) {
-  const [profile, setProfile] = useState<Profile>({});
-  const [sessionName, setSessionName] = useState('');
+  const [borrowerName, setBorrowerName] = useState('');
+  const [desiredHomePrice, setDesiredHomePrice] = useState(0);
+  const [creditScore, setCreditScore] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [completedAt, setCompletedAt] = useState<string | null>(null);
@@ -52,16 +46,17 @@ export function PreApprovalLetterView({ onBack }: Props) {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('homeyProfile');
-    if (saved) setProfile(JSON.parse(saved) as Profile);
-
-    const gatherSaved = localStorage.getItem('homeyGatherDocuments');
     void (async () => {
       const user = await fetchSessionUser();
       if (user) {
         setIsLoggedIn(true);
-        setSessionName(`${user.firstName} ${user.lastName}`.trim());
+        setBorrowerName(`${user.firstName} ${user.lastName}`.trim());
         try {
+          const serverProfile = await fetchUserProfile();
+          if (serverProfile) {
+            setDesiredHomePrice(serverProfile.desiredHomePrice ?? 0);
+            setCreditScore(serverProfile.creditScore ?? 0);
+          }
           const completion = await fetchPreApprovalCompletion();
           if (completion?.completed) {
             setIsCompleted(true);
@@ -70,9 +65,16 @@ export function PreApprovalLetterView({ onBack }: Props) {
         } catch {
           // silently ignore
         }
+      } else {
+        const saved = localStorage.getItem('homeyProfile');
+        if (saved) {
+          const p = JSON.parse(saved) as { name?: string; desiredHomePrice?: string; creditScore?: string };
+          setBorrowerName(p.name ?? '');
+          setDesiredHomePrice(parseFloat(p.desiredHomePrice ?? '0') || 0);
+          setCreditScore(parseInt(p.creditScore ?? '0') || 0);
+        }
       }
     })();
-    void gatherSaved;
   }, []);
 
   const handleMarkComplete = async () => {
@@ -86,39 +88,21 @@ export function PreApprovalLetterView({ onBack }: Props) {
       setIsCompleted(true);
       setCompletedAt(formatSavedAt(new Date().toISOString()));
       setCompleteStatus('done');
+      setTimeout(() => setCompleteStatus('idle'), 2000);
     } catch {
       setCompleteStatus('error');
       setTimeout(() => setCompleteStatus('idle'), 3000);
     }
   };
 
-  // Income/expenses: prefer homeyProfile, fall back to income summary stored in gather docs page
-  const incomeSummaryRaw = localStorage.getItem('homeyGatherDocuments');
-  void incomeSummaryRaw;
-
-  const monthlyIncome = parseFloat(profile.monthlyIncome ?? '0');
-  const monthlyExpenses = parseFloat(profile.monthlyExpenses ?? '0');
-  const creditScore = parseInt(profile.creditScore ?? '0');
-
-  // TVM: monthly payment capacity = income * 45% - expenses
-  // PV of annuity: purchasePrice loan portion = pmt * (1-(1+r)^-n)/r, r=6%/12, n=360
-  // Then purchase price = loan / 0.97 (borrower puts 3% down)
-  const monthlyPayment = monthlyIncome * 0.45 - monthlyExpenses;
-  const r = 0.06 / 12;
-  const n = 360;
-  const maxLoan = monthlyIncome > 0 && monthlyPayment > 0
-    ? Math.round((monthlyPayment * (1 - Math.pow(1 + r, -n)) / r) / 1000) * 1000
-    : null;
   const DEFAULT_PURCHASE_PRICE = 500000;
-  const purchasePrice = maxLoan ? Math.round((maxLoan / 0.97) / 1000) * 1000 : DEFAULT_PURCHASE_PRICE;
-  const downPayment = Math.round(purchasePrice * 0.03 / 1000) * 1000;
+  const purchasePrice = desiredHomePrice > 0 ? desiredHomePrice : DEFAULT_PURCHASE_PRICE;
+  const loanAmount = Math.round(purchasePrice * 0.8 / 1000) * 1000;
+  const downPayment = purchasePrice - loanAmount;
 
-  const loanType = creditScore > 0 ? getLoanType(creditScore) : 'Conventional';
+  const loanType = creditScore > 0 ? getLoanType(creditScore) : '30-Year Fixed Conventional';
   const expirationDate = getExpirationDate();
   const todayFormatted = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  // Name: prefer session (first + last), then homeyProfile name
-  const borrowerName = sessionName || (profile.name && profile.name.trim()) || '';
 
   const nextSteps = [
     {
@@ -151,7 +135,7 @@ export function PreApprovalLetterView({ onBack }: Props) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex-1 flex flex-col relative z-10 px-4 md:px-10 py-8 md:h-screen md:overflow-hidden"
+      className="flex-1 flex flex-col relative z-10 px-4 md:px-10 py-8"
     >
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
@@ -252,20 +236,22 @@ export function PreApprovalLetterView({ onBack }: Props) {
             )}
             <button
               onClick={() => void handleMarkComplete()}
-              disabled={completeStatus === 'saving'}
+              disabled={completeStatus === 'saving' || completeStatus === 'done'}
               className={`flex items-center justify-center gap-3 w-full py-4 rounded-2xl font-bold text-base transition-all
                 ${completeStatus === 'error'
                   ? 'bg-[#bf8b85]/30 border border-[#bf8b85]/40 text-[#bf8b85]'
-                  : isCompleted
-                  ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:-translate-y-0.5'
+                  : completeStatus === 'done'
+                  ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300'
                   : 'bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:-translate-y-0.5'}`}
             >
               {completeStatus === 'saving' ? (
                 <><Cloud className="w-5 h-5 animate-pulse" /> Saving...</>
+              ) : completeStatus === 'done' ? (
+                <><CheckCircle className="w-5 h-5" /> Saved!</>
               ) : completeStatus === 'error' ? (
                 <><AlertCircle className="w-5 h-5" /> Error — try again</>
               ) : isCompleted ? (
-                <><CheckCircle className="w-5 h-5 text-emerald-400" /> Recomplete Pre-Approval</>
+                <><CheckCircle className="w-5 h-5 text-emerald-400" /> Milestone Already Complete — Mark Again</>
               ) : (
                 <><CheckCircle className="w-5 h-5 text-[#bdc4a7]" /> I've Contacted a Lender — Mark Complete</>
               )}
@@ -284,19 +270,19 @@ export function PreApprovalLetterView({ onBack }: Props) {
           className="rounded-2xl overflow-hidden flex flex-col h-full"
           style={{ background: 'rgba(255,255,255,0.95)' }}
         >
-          <div className="px-8 py-5 flex items-center justify-between" style={{ backgroundColor: '#3e78b2' }}>
+          <div className="px-4 sm:px-8 py-5 flex items-center justify-between gap-3 flex-wrap" style={{ backgroundColor: '#3e78b2' }}>
             <div>
-              <p className="text-white font-bold text-xl tracking-widest uppercase">Homey Mortgage</p>
+              <p className="text-white font-bold text-xl tracking-widest uppercase">Homey Financial</p>
               <p className="text-white/70 text-sm">Mortgage Pre-Approval Letter</p>
             </div>
             <div className="text-right text-white/70 text-xs">
               <p>NMLS #000000</p>
-              <p>homey.com | (800) 000-0000</p>
+              <p>homeymortgage.com | (800) 000-0000</p>
             </div>
           </div>
 
-          <div className="px-8 py-6 flex flex-col gap-5 text-gray-800 flex-1">
-            <div className="flex justify-between text-base text-gray-500 border-b border-gray-100 pb-3">
+          <div className="px-4 sm:px-8 py-6 flex flex-col gap-5 text-gray-800 flex-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-1 text-sm sm:text-base text-gray-500 border-b border-gray-100 pb-3">
               <span><span className="font-semibold text-gray-700">Date:</span> {todayFormatted}</span>
               <span><span className="font-semibold text-gray-700">Valid Through:</span> {expirationDate}</span>
             </div>
@@ -314,12 +300,17 @@ export function PreApprovalLetterView({ onBack }: Props) {
                 {
                   label: 'Purchase Price',
                   value: `$${purchasePrice.toLocaleString()}`,
-                  highlight: true,
+                  highlight: false,
                 },
                 {
-                  label: 'Down Payment (3%)',
+                  label: 'Down Payment (20%)',
                   value: `$${downPayment.toLocaleString()}`,
                   highlight: false,
+                },
+                {
+                  label: 'Loan Amount (80%)',
+                  value: `$${loanAmount.toLocaleString()}`,
+                  highlight: true,
                 },
                 { label: 'Loan Type', value: loanType, highlight: false },
                 { label: 'Interest Rate', value: '6.00%', highlight: false },
@@ -348,11 +339,11 @@ export function PreApprovalLetterView({ onBack }: Props) {
               <div className="flex flex-col gap-0.5">
                 <div className="h-px bg-gray-400 w-52" />
                 <p className="text-base text-gray-600 font-semibold">Authorized Loan Officer</p>
-                <p className="text-sm text-gray-400">Homey Mortgage Corporation — NMLS #000000</p>
+                <p className="text-sm text-gray-400">Homey Financial Corporation — NMLS #000000</p>
               </div>
               <div className="text-right text-sm text-gray-400">
                 <p>Pre-Approval Reference</p>
-                <p className="font-mono text-gray-500">HMC-{new Date().getFullYear()}-{String(Math.floor(Math.random() * 90000) + 10000)}</p>
+                <p className="font-mono text-gray-500">HMC-{new Date().getFullYear()}-{String((purchasePrice % 90000) + 10000)}</p>
               </div>
             </div>
           </div>

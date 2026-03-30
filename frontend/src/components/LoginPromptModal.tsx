@@ -26,6 +26,9 @@ export function LoginPromptModal({ open, onClose, message }: Props) {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 16 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-prompt-title"
             className="glass rounded-3xl p-8 w-full max-w-sm flex flex-col gap-5"
             onClick={(e) => e.stopPropagation()}
           >
@@ -35,14 +38,15 @@ export function LoginPromptModal({ open, onClose, message }: Props) {
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close dialog"
                 className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-1">Sign in to save your progress</h2>
+              <h2 id="login-prompt-title" className="text-xl font-bold text-white mb-1">Sign in to save your progress</h2>
               <p className="text-white/70 text-base leading-relaxed">
                 {message ?? 'Log in or create a free account to save your pre-approval data to your account.'}
               </p>

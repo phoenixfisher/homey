@@ -17,6 +17,7 @@ import {
   HOMEY_MILESTONES_KEY,
 } from '@/lib/auth';
 import { hydrateLocalProfileFromServer, profileHasTargetPriceAndMonthlyBudget } from '@/lib/profile';
+import { fetchMilestones, saveMilestone } from '@/lib/progress';
 
 interface Milestone {
   id: number;
@@ -110,9 +111,20 @@ export function DashboardPage() {
       }
       setIsProfileLoaded(true);
 
-      const savedMilestones = localStorage.getItem(HOMEY_MILESTONES_KEY);
-      if (savedMilestones) {
-        setMilestones(JSON.parse(savedMilestones) as Milestone[]);
+      // Load milestones: prefer backend, fall back to localStorage
+      const dbMilestones = await fetchMilestones();
+      if (dbMilestones.length > 0) {
+        setMilestones((prev) =>
+          prev.map((m) => {
+            const db = dbMilestones.find((r) => r.milestoneId === m.id);
+            return db ? { ...m, completed: db.completed } : m;
+          })
+        );
+      } else {
+        const savedMilestones = localStorage.getItem(HOMEY_MILESTONES_KEY);
+        if (savedMilestones) {
+          setMilestones(JSON.parse(savedMilestones) as Milestone[]);
+        }
       }
     })();
   }, [navigate]);
@@ -123,6 +135,8 @@ export function DashboardPage() {
     );
     setMilestones(updatedMilestones);
     localStorage.setItem(HOMEY_MILESTONES_KEY, JSON.stringify(updatedMilestones));
+    const milestone = updatedMilestones.find((m) => m.id === milestoneId);
+    if (milestone) void saveMilestone(milestoneId, milestone.completed);
   };
 
   const handleLogout = () => {
@@ -258,13 +272,19 @@ export function DashboardPage() {
               </div>
             </div>
 
-            {/* Journey Progress */}
+            {/* OKR: Journey Progress */}
             <div className="mb-2">
-              <div className="flex justify-between text-sm text-white/70 mb-2">
-                <span>Journey Progress</span>
-                <span>{completedCount} of {milestones.length} milestones</span>
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/50 mb-0.5">OKR: Home Buying Journey</p>
+                  <p className="text-white font-semibold text-base">Complete all 8 milestones to reach homeownership</p>
+                </div>
+                <div className="flex items-baseline gap-2 shrink-0">
+                  <span className="text-3xl font-bold text-white">{Math.round(progressPercent)}%</span>
+                  <span className="text-white/60 text-sm">{completedCount} of {milestones.length} milestones</span>
+                </div>
               </div>
-              <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-4 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progressPercent}%` }}
@@ -335,7 +355,10 @@ export function DashboardPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <h2 className="text-2xl text-white mb-4">Your Milestones</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+              <h2 className="text-2xl text-white">Your Milestones</h2>
+              <p className="text-white/50 text-sm">{milestones.length - completedCount} remaining — click any milestone to toggle</p>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {milestones.map((milestone, index) => (
                 <motion.div
@@ -343,6 +366,11 @@ export function DashboardPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 + index * 0.05 }}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={milestone.completed}
+                  aria-label={`${milestone.title}: ${milestone.completed ? 'completed' : 'not completed'}. Click to toggle.`}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMilestone(milestone.id); } }}
                   className={`glass rounded-2xl p-5 transition-all cursor-pointer ${
                     milestone.completed ? 'opacity-75' : 'hover:bg-white/20'
                   }`}

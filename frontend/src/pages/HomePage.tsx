@@ -88,7 +88,7 @@ export function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-6">
               {sessionUser ? (
                 <>Welcome back,<br />{sessionUser.firstName}</>
               ) : localProfile ? (

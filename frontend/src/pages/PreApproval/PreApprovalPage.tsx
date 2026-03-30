@@ -156,7 +156,7 @@ export function PreApprovalPage() {
         <div className="hidden md:grid w-full" style={{
           gridTemplateColumns: 'repeat(8, 1fr)',
           gridTemplateRows: 'repeat(8, 1fr)',
-          minHeight: '82vh',
+          minHeight: '75dvh',
         }}>
           <motion.button
             initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}

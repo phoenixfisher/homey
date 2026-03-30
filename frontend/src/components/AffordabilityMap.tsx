@@ -52,6 +52,7 @@ export function AffordabilityMap({ targetPrice }: AffordabilityMapProps) {
       <div className="relative w-full h-56 bg-white/5 rounded-xl overflow-hidden">
         <svg
           viewBox="0 0 100 100"
+          aria-hidden="true"
           className="absolute inset-0 w-full h-full opacity-20"
           preserveAspectRatio="none"
         >

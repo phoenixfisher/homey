@@ -53,6 +53,7 @@ export function applyUserProfileToLocalStorage(loaded: UserProfile): void {
     yearlyIncome: existing?.yearlyIncome ?? '',
     savingsTotal: loaded.totalSavings?.toString() ?? '',
     monthlyExpenses: loaded.monthlyExpenses?.toString() ?? '',
+    targetZipCode: loaded.targetZipCode ?? existing?.targetZipCode ?? '',
     industry: loaded.industryOfWork ?? '',
   });
 }

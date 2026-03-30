@@ -105,7 +105,7 @@ function InteractiveListingsMap({ homes }: { homes: HomeListing[] }) {
       <p className="text-white/70 text-sm">
         Google streets + landmarks layer. Use mouse wheel or +/- to zoom out farther.
       </p>
-      <div ref={mapRootRef} className="h-[520px] rounded-2xl overflow-hidden border border-white/15" />
+      <div ref={mapRootRef} className="h-[300px] md:h-[520px] rounded-2xl overflow-hidden border border-white/15" />
       {validHomes.length === 0 && (
         <p className="text-white/70 text-sm">No map points available for this ZIP search.</p>
       )}

@@ -11,8 +11,8 @@ import {
   X,
   ArrowRight,
   CheckCircle,
+  MapPin,
 } from 'lucide-react';
-import { AffordabilityMap } from '@/components/AffordabilityMap';
 import {
   getUserProfile,
   saveUserProfile,
@@ -48,7 +48,12 @@ const emptyForm = {
   savingsTotal: '',
   monthlyExpenses: '',
   industry: '',
+  targetZipCode: '',
 };
+
+function isValidZip(zip: string): boolean {
+  return /^\d{5}$/.test(zip.trim());
+}
 
 type Props = {
   open: boolean;
@@ -77,6 +82,7 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
         savingsTotal: saved.savingsTotal,
         monthlyExpenses: saved.monthlyExpenses,
         industry: saved.industry,
+        targetZipCode: saved.targetZipCode ?? '',
       });
       setNoCredit(saved.creditScore === 'No Credit');
     } else if (sessionUser) {
@@ -94,7 +100,12 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
 
   const canProceed = () => {
     if (step === 1) {
-      return !!(formData.name && formData.desiredHomePrice && (noCredit || formData.creditScore));
+      return !!(
+        formData.name &&
+        formData.desiredHomePrice &&
+        (noCredit || formData.creditScore) &&
+        isValidZip(formData.targetZipCode)
+      );
     }
     if (step === 2) {
       return !!(formData.monthlyIncome && formData.yearlyIncome && formData.savingsTotal && formData.monthlyExpenses);
@@ -127,7 +138,7 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
             monthlyIncome: parseFloat(profileData.monthlyIncome) || null,
             monthlyExpenses: parseFloat(profileData.monthlyExpenses) || null,
             totalSavings: parseFloat(profileData.savingsTotal) || null,
-            targetZipCode: current.targetZipCode,
+            targetZipCode: profileData.targetZipCode || current.targetZipCode,
             industryOfWork: profileData.industry || null,
           });
         }
@@ -154,15 +165,19 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="glass rounded-3xl p-8 max-w-4xl w-full my-8 relative"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="getting-started-title"
+            className="glass rounded-3xl p-4 md:p-8 max-w-4xl w-full my-4 md:my-8 relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => onClose()}
+              aria-label="Close dialog"
               className="absolute top-6 right-6 w-10 h-10 rounded-full glass hover:bg-white/20 flex items-center justify-center transition-all"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-5 h-5 text-white" aria-hidden="true" />
             </button>
 
             <div className="flex items-center justify-center gap-3 mb-8">
@@ -197,7 +212,7 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <h2 className="text-3xl text-white mb-2 text-center">Let&apos;s Get Started</h2>
+                  <h2 id="getting-started-title" className="text-3xl text-white mb-2 text-center">Let&apos;s Get Started</h2>
                   <p className="text-white/70 text-center mb-8">Tell us about your home buying goals</p>
 
                   <div className="space-y-5">
@@ -263,15 +278,22 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
                       </label>
                     </div>
 
-                    {formData.desiredHomePrice && parseInt(formData.desiredHomePrice) > 0 && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-6"
-                      >
-                        <AffordabilityMap targetPrice={parseInt(formData.desiredHomePrice)} />
-                      </motion.div>
-                    )}
+                    <div>
+                      <label className="block text-white/90 mb-2">
+                        <MapPin className="inline w-4 h-4 mr-2" />
+                        Target ZIP Code
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        value={formData.targetZipCode}
+                        onChange={(e) => setFormData({ ...formData, targetZipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
+                        className="w-full px-4 py-3 glass rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                        placeholder="e.g., 84604"
+                      />
+                      <p className="text-white/50 text-xs mt-1.5">Used to search homes near your desired area</p>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -286,7 +308,7 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
                   <p className="text-white/70 text-center mb-8">Help us understand your financial situation</p>
 
                   <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-white/90 mb-2">
                           <DollarSign className="inline w-4 h-4 mr-2" />
@@ -317,7 +339,7 @@ export function GettingStartedModal({ open, onClose, sessionUser, onCompleted }:
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-white/90 mb-2">
                           <PiggyBank className="inline w-4 h-4 mr-2" />

@@ -140,6 +140,9 @@
     @apply bg-background text-foreground;
     background: linear-gradient(135deg, #3e78b2 0%, #92b4a7 100%);
     min-height: 100vh;
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
   }
 
   .glass {
@@ -189,6 +192,13 @@
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   button:disabled {

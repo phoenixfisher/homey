@@ -17,6 +17,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { MainNav } from '@/components/MainNav';
 import { AuthHeaderActions } from '@/components/AuthHeaderActions';
 import { backendLogout, fetchSessionUser, getUserProfile, isLoggedIn as getIsLoggedIn, logout, type SessionUser } from '@/lib/auth';
+import { fetchLearningProgress, markModuleComplete } from '@/lib/progress';
 
 type QuizQuestion = {
   prompt: string;
@@ -369,6 +370,7 @@ export function LearningPage() {
       next.add(activeModule.id);
       return next;
     });
+    void markModuleComplete(activeModule.id);
     setCompletionFanfare('known');
   };
 
@@ -398,6 +400,7 @@ export function LearningPage() {
         return next;
       });
       if (wasNew) {
+        void markModuleComplete(activeModule.id);
         setCompletionFanfare('quiz');
       }
       return;
@@ -416,6 +419,17 @@ export function LearningPage() {
       const user = await fetchSessionUser();
       setSessionUser(user);
       setIsLoggedIn(!!user || getIsLoggedIn() || !!getUserProfile());
+      if (user) {
+        const dbModules = await fetchLearningProgress();
+        if (dbModules.length > 0) {
+          setCompletedModules((prev) => {
+            const merged = new Set(prev);
+            dbModules.forEach((id) => merged.add(id));
+            localStorage.setItem('homeyCompletedModules', JSON.stringify([...merged]));
+            return merged;
+          });
+        }
+      }
     })();
   }, []);
 
@@ -484,7 +498,7 @@ export function LearningPage() {
                   <GraduationCap className="w-4 h-4" />
                   Module 1: Learning
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Build Home-Buying Confidence</h1>
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3">Build Home-Buying Confidence</h1>
                 <p className="text-white/80 text-lg max-w-3xl">
                   Learn the essentials through short, practical lessons and quick quiz checks.
                   Each topic is designed to answer real user questions and keep progress tangible.

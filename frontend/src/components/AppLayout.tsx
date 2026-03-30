@@ -30,23 +30,27 @@ export function AppLayout({
   return (
     <div
       className={cn(
-        'min-h-screen flex flex-col relative overflow-hidden',
+        'min-h-screen flex flex-col relative',
         className,
       )}
+      style={{ minHeight: '100dvh' }}
     >
-      {/* Animated background orb — top-left, sage */}
-      <motion.div
-        className="fixed top-20 left-20 w-96 h-96 bg-[#bdc4a7]/20 rounded-full blur-3xl pointer-events-none"
-        animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      {/* Background orbs clipped to their own layer so overflow-hidden doesn't affect page content */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        {/* Animated background orb — top-left, sage */}
+        <motion.div
+          className="absolute top-20 left-20 w-96 h-96 bg-[#bdc4a7]/20 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
 
-      {/* Animated background orb — bottom-right, rose */}
-      <motion.div
-        className="fixed bottom-20 right-20 w-96 h-96 bg-[#bf8b85]/20 rounded-full blur-3xl pointer-events-none"
-        animate={{ scale: [1.2, 1, 1.2], opacity: [0.4, 0.2, 0.4] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      />
+        {/* Animated background orb — bottom-right, rose */}
+        <motion.div
+          className="absolute bottom-20 right-20 w-96 h-96 bg-[#bf8b85]/20 rounded-full blur-3xl"
+          animate={{ scale: [1.2, 1, 1.2], opacity: [0.4, 0.2, 0.4] }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
 
       {children}
     </div>

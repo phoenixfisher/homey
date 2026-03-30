@@ -23,6 +23,7 @@ import {
   type SessionUser,
 } from '@/lib/auth';
 import { hydrateLocalProfileFromServer, profileHasTargetPriceAndMonthlyBudget } from '@/lib/profile';
+import { fetchMoneySettings, saveMoneySettings } from '@/lib/progress';
 
 const STORAGE_KEY = 'homeyMoneyManagementSettings';
 
@@ -78,20 +79,30 @@ export function MoneyManagementPage() {
       }
       setIsProfileLoaded(true);
 
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-
-      try {
-        const parsed = JSON.parse(raw) as Partial<MoneySettings>;
+      // Load settings: prefer backend, fall back to localStorage
+      const dbSettings = user ? await fetchMoneySettings() : null;
+      if (dbSettings && (dbSettings.monthlySavingsGoal !== null || dbSettings.housingBudget !== null)) {
         const nextSettings = {
-          monthlySavingsGoal: parsed.monthlySavingsGoal ?? defaultSettings.monthlySavingsGoal,
-          housingBudget: parsed.housingBudget ?? defaultSettings.housingBudget,
+          monthlySavingsGoal: dbSettings.monthlySavingsGoal !== null ? String(dbSettings.monthlySavingsGoal) : defaultSettings.monthlySavingsGoal,
+          housingBudget: dbSettings.housingBudget !== null ? String(dbSettings.housingBudget) : defaultSettings.housingBudget,
         };
         setSettings(nextSettings);
         setSavedSettings(nextSettings);
-      } catch {
-        setSettings(defaultSettings);
-        setSavedSettings(defaultSettings);
+      } else {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+          const parsed = JSON.parse(raw) as Partial<MoneySettings>;
+          const nextSettings = {
+            monthlySavingsGoal: parsed.monthlySavingsGoal ?? defaultSettings.monthlySavingsGoal,
+            housingBudget: parsed.housingBudget ?? defaultSettings.housingBudget,
+          };
+          setSettings(nextSettings);
+          setSavedSettings(nextSettings);
+        } catch {
+          setSettings(defaultSettings);
+          setSavedSettings(defaultSettings);
+        }
       }
     })();
   }, [navigate]);
@@ -215,7 +226,11 @@ export function MoneyManagementPage() {
     event.preventDefault();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     setSavedSettings(settings);
-    setSavedMessage('Saved to your browser.');
+    setSavedMessage('Saved!');
+    void saveMoneySettings(
+      parseMoney(settings.monthlySavingsGoal) || null,
+      parseMoney(settings.housingBudget) || null,
+    );
     window.setTimeout(() => setSavedMessage(''), 2500);
   };
 
@@ -243,7 +258,7 @@ export function MoneyManagementPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-white/60 uppercase tracking-[0.2em] text-xs">Money Management</p>
-                <h1 className="text-3xl md:text-5xl font-semibold text-white mt-2">
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold text-white mt-2">
                   Keep your home budget realistic
                 </h1>
                 <p className="text-white/75 mt-3 max-w-2xl">
@@ -416,7 +431,7 @@ export function MoneyManagementPage() {
                 </button>
               )}
 
-              <p className="text-white/70 text-sm mt-3 min-h-5">{savedMessage}</p>
+              <p className="text-white/70 text-sm mt-3 min-h-5" aria-live="polite" aria-atomic="true">{savedMessage}</p>
             </motion.form>
           </section>
 

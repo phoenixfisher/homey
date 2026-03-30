@@ -87,7 +87,7 @@ export function LoginPage() {
       setIsLoggedIn(true);
       await syncLocalProfileToBackend();
       await hydrateLocalProfileFromServer();
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setError('Unable to reach the server. Is the backend running?');
@@ -165,12 +165,12 @@ export function LoginPage() {
             className="glass rounded-3xl p-8 md:p-10 flex flex-col md:flex-row gap-10"
           >
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <div className="flex items-start gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 mt-1">
                   <Lock className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl md:text-4xl text-white font-semibold">
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl text-white font-semibold">
                     {isRegisterMode ? 'Create your Homey account' : 'Welcome back to Homey'}
                   </h1>
                   <p className="text-white/70 text-sm md:text-base mt-1">

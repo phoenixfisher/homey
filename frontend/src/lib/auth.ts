@@ -20,6 +20,7 @@ export type HomeyUserProfile = {
   savingsTotal: string;
   monthlyExpenses: string;
   industry: string;
+  targetZipCode: string;
 };
 
 export function isLoggedIn(): boolean {

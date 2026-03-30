@@ -63,9 +63,10 @@ export function MainNav({
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen((open) => !open)}
-                className="md:hidden p-2 glass rounded-xl text-white/90 hover:text-white hover:bg-white/20 transition-all"
+                className="md:hidden p-3 glass rounded-xl text-white/90 hover:text-white hover:bg-white/20 active:bg-white/30 transition-all"
                 aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={isMobileMenuOpen}
+                style={{ minWidth: 44, minHeight: 44 }}
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -82,8 +83,9 @@ export function MainNav({
                   to={item.to}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={item.id === active
-                    ? 'px-3 py-2 rounded-lg text-white font-semibold bg-white/10'
-                    : 'px-3 py-2 rounded-lg text-white/85 hover:text-white hover:bg-white/10 transition-colors'}
+                    ? 'px-4 py-3 rounded-lg text-white font-semibold bg-white/10'
+                    : 'px-4 py-3 rounded-lg text-white/85 hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors'}
+                  style={{ minHeight: 44 }}
                 >
                   {item.label}
                 </Link>

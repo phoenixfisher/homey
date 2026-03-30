@@ -878,6 +878,172 @@ app.MapGet("/api/homes/search", async (string zip, IDbConnection db, HttpContext
     ));
 });
 
+// ── Milestones ───────────────────────────────────────────────────────────────
+
+app.MapGet("/api/milestones", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT milestone_id, completed, completed_at
+        FROM user_milestones
+        WHERE user_id = @user_id;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        var rows = new List<object>();
+        while (reader.Read())
+        {
+            rows.Add(new
+            {
+                milestoneId = reader.GetInt32(reader.GetOrdinal("milestone_id")),
+                completed = reader.GetBoolean(reader.GetOrdinal("completed")),
+                completedAt = reader.IsDBNull(reader.GetOrdinal("completed_at")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("completed_at")),
+            });
+        }
+        return Results.Ok(rows);
+    }
+});
+
+app.MapPut("/api/milestones/{milestoneId:int}", (int milestoneId, MilestoneUpdateRequest request, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        INSERT INTO user_milestones (user_id, milestone_id, completed, completed_at)
+        VALUES (@user_id, @milestone_id, @completed, @completed_at)
+        ON DUPLICATE KEY UPDATE
+            completed = @completed,
+            completed_at = @completed_at;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@milestone_id", milestoneId));
+        cmd.Parameters.Add(new MySqlParameter("@completed", request.Completed));
+        cmd.Parameters.Add(new MySqlParameter("@completed_at", request.Completed ? DateTime.UtcNow : DBNull.Value));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
+// ── Learning Progress ────────────────────────────────────────────────────────
+
+app.MapGet("/api/learning/progress", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT module_id FROM user_learning_progress
+        WHERE user_id = @user_id;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        var moduleIds = new List<string>();
+        while (reader.Read())
+            moduleIds.Add(reader.GetString(reader.GetOrdinal("module_id")));
+        return Results.Ok(moduleIds);
+    }
+});
+
+app.MapPost("/api/learning/progress/{moduleId}", (string moduleId, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        INSERT IGNORE INTO user_learning_progress (user_id, module_id, completed_at)
+        VALUES (@user_id, @module_id, UTC_TIMESTAMP());
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@module_id", moduleId));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
+// ── Money Management Settings ────────────────────────────────────────────────
+
+app.MapGet("/api/money-settings", (IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        SELECT money_savings_goal, money_housing_budget
+        FROM users WHERE user_id = @user_id LIMIT 1;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return Results.Ok(new { monthlySavingsGoal = (decimal?)null, housingBudget = (decimal?)null });
+
+        return Results.Ok(new
+        {
+            monthlySavingsGoal = reader.IsDBNull(reader.GetOrdinal("money_savings_goal")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("money_savings_goal")),
+            housingBudget = reader.IsDBNull(reader.GetOrdinal("money_housing_budget")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("money_housing_budget")),
+        });
+    }
+});
+
+app.MapPut("/api/money-settings", (MoneySettingsRequest request, IDbConnection db, HttpContext httpContext) =>
+{
+    if (!TryGetSessionUser(httpContext, out var sessionUser) || sessionUser is null)
+        return Results.Unauthorized();
+
+    const string sql = """
+        UPDATE users SET
+            money_savings_goal = @money_savings_goal,
+            money_housing_budget = @money_housing_budget
+        WHERE user_id = @user_id;
+        """;
+
+    using (db)
+    {
+        db.Open();
+        using var cmd = db.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new MySqlParameter("@user_id", sessionUser.UserId));
+        cmd.Parameters.Add(new MySqlParameter("@money_savings_goal", request.MonthlySavingsGoal ?? (object)DBNull.Value));
+        cmd.Parameters.Add(new MySqlParameter("@money_housing_budget", request.HousingBudget ?? (object)DBNull.Value));
+        cmd.ExecuteNonQuery();
+    }
+
+    return Results.Ok();
+});
+
 app.Run();
 
 static string? BuildConnectionStringFromDbEnvironment()
@@ -1103,9 +1269,57 @@ static List<HomeListing> ParseListingsFromRapidApi(JsonDocument doc, string zip)
     return results;
 }
 
+static bool TryGetUtahZipCentroid(string zip, out (double lat, double lng) centroid)
+{
+    centroid = (0,0);
+    if (!int.TryParse(zip, NumberStyles.None, CultureInfo.InvariantCulture, out var z))
+    {
+        return false;
+    }
+
+    if (z < 84000 || z > 84799)
+    {
+        return false;
+    }
+
+    if (z <= 84099)
+    {
+        // Salt Lake metro and nearby valleys
+        var t = (z - 84000) / 99.0;
+        centroid = (40.20 + 0.75 * t, -111.95 + 0.20 * t);
+        return true;
+    }
+
+    if (z <= 84199)
+    {
+        centroid = (40.76, -111.89);
+        return true;
+    }
+
+    if (z <= 84399)
+    {
+        // Logan / Northern Utah
+        var t = (z - 84300) / 99.0;
+        centroid = (41.50 + 0.40 * t, -111.83);
+        return true;
+    }
+
+    if (z <= 84699)
+    {
+        // Provo/Orem and southward
+        var t = (z - 84600) / 99.0;
+        centroid = (39.70 + 0.65 * t, -111.80 - 0.05 * t);
+        return true;
+    }
+
+    // 847xx - Southern Utah
+    var tSouth = (z - 84700) / 99.0;
+    centroid = (37.00 + 0.45 * tSouth, -113.50 + 0.60 * tSouth);
+    return true;
+}
+
 static List<HomeListing> BuildFallbackListings(List<string> zipCodes)
 {
-    var random = new Random(84042);
     var anchorData = new Dictionary<string, (double Lat, double Lng, decimal BaselinePrice)>
     {
         ["84042"] = (40.1652, -111.6247, 515000m),
@@ -1120,9 +1334,27 @@ static List<HomeListing> BuildFallbackListings(List<string> zipCodes)
     var listings = new List<HomeListing>();
     foreach (var zip in zipCodes)
     {
+        // Try hard-coded UT ZIP centroids first for Utah range; otherwise existing anchors and random fallback.
         var anchor = anchorData.TryGetValue(zip, out var value)
             ? value
-            : (40.1652 + random.NextDouble() * 0.25, -111.6247 + random.NextDouble() * 0.25, 500000m);
+            : (0d, 0d, 500000m);
+
+        if (anchor.Item1 == 0 && anchor.Item2 == 0 && TryGetUtahZipCentroid(zip, out var utahCoord))
+        {
+            anchor = (utahCoord.lat, utahCoord.lng, 500000m);
+        }
+
+        // Use ZIP-specific deterministic seed to vary non-UT fallback
+        var zipSeed = int.TryParse(zip, NumberStyles.None, CultureInfo.InvariantCulture, out var numericZip)
+            ? numericZip
+            : zip.Aggregate(0, (hash, ch) => (hash * 31) + ch);
+
+        var random = new Random((int)((uint)zipSeed ^ 0xA3B1C2D3u));
+
+        if (anchor.Item1 == 0 && anchor.Item2 == 0)
+        {
+            anchor = (40.1652 + random.NextDouble() * 0.25, -111.6247 + random.NextDouble() * 0.25, 500000m);
+        }
 
         for (var i = 0; i < 8; i++)
         {
@@ -1319,3 +1551,7 @@ public record SaveQualificationSnapshotRequest(
     decimal? Dti, ushort? CreditScore, decimal? MonthlyIncome,
     decimal? MonthlyExpenses, decimal? Savings, decimal? DownPaymentPct
 );
+
+public record MilestoneUpdateRequest(bool Completed);
+
+public record MoneySettingsRequest(decimal? MonthlySavingsGoal, decimal? HousingBudget);

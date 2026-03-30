@@ -7,10 +7,6 @@ import { PreApprovalPage } from '@/pages/PreApproval/PreApprovalPage';
 import { LearningPage } from '@/pages/LearningPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { HomesPage } from '@/pages/HomesPage';
-import { PlaceHolder1 } from '@/pages/PlaceHolder1';
-import { PlaceHolder2 } from '@/pages/PlaceHolder2';
-import { PlaceHolder3 } from '@/pages/PlaceHolder3';
-import { PlaceHolder4 } from '@/pages/PlaceHolder4';
 import { OnboardingGate } from '@/components/OnboardingGate';
 
 const router = createBrowserRouter([
@@ -25,22 +21,8 @@ const router = createBrowserRouter([
       { path: '/pre-approval',     Component: PreApprovalPage },
       { path: '/profile',          Component: ProfilePage },
       { path: '/homes',            Component: HomesPage },
-      { path: '/page1',            Component: PlaceHolder1 },
-      { path: '/page2',            Component: PlaceHolder2 },
-      { path: '/page3',            Component: PlaceHolder3 },
-      { path: '/page4',            Component: PlaceHolder4 },
     ],
   },
-
-const router = createBrowserRouter([
-  { path: '/',              Component: HomePage },
-  { path: '/dashboard',     Component: DashboardPage },
-  { path: '/login',         Component: LoginPage },
-  { path: '/money-management', Component: MoneyManagementPage },
-  { path: '/pre-approval',  Component: PreApprovalPage },
-  { path: '/learning',      Component: LearningPage },
-  { path: '/profile',       Component: ProfilePage },
-  { path: '/homes',         Component: HomesPage },
 ]);
 
 export default function App() {

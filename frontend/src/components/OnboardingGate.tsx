@@ -11,10 +11,11 @@ import {
   Wallet,
   ArrowRight,
   CheckCircle,
+  MapPin,
 } from 'lucide-react';
 import { AppLayout } from '@/components/AppLayout';
-import { AffordabilityMap } from '@/components/AffordabilityMap';
 import { getUserProfile, saveUserProfile, type HomeyUserProfile } from '@/lib/auth';
+import { fetchUserProfile, updateUserProfile } from '@/lib/profile';
 
 const emptyForm = {
   name: '',
@@ -25,7 +26,12 @@ const emptyForm = {
   savingsTotal: '',
   monthlyExpenses: '',
   industry: '',
+  targetZipCode: '',
 };
+
+function isValidZip(zip: string): boolean {
+  return /^\d{5}$/.test(zip.trim());
+}
 
 const industries = [
   'Technology',
@@ -54,18 +60,44 @@ export function OnboardingGate() {
   if (profile) return <Outlet />;
 
   const canProceed = () => {
-    if (step === 1) return formData.name && formData.desiredHomePrice && (noCredit || formData.creditScore);
-    if (step === 2) return formData.monthlyIncome && formData.yearlyIncome && formData.savingsTotal && formData.monthlyExpenses;
-    return formData.industry;
+    if (step === 1) return !!(formData.name && formData.desiredHomePrice && (noCredit || formData.creditScore) && isValidZip(formData.targetZipCode));
+    if (step === 2) return !!(formData.monthlyIncome && formData.yearlyIncome && formData.savingsTotal && formData.monthlyExpenses);
+    return !!formData.industry;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const profileData: HomeyUserProfile = {
       ...formData,
       creditScore: noCredit ? 'No Credit' : formData.creditScore,
     };
     saveUserProfile(profileData);
+
+    try {
+      const current = await fetchUserProfile();
+      if (current) {
+        const nameParts = profileData.name.trim().split(' ');
+        const firstName = nameParts[0] || current.firstName;
+        const lastName = nameParts.slice(1).join(' ') || current.lastName;
+
+        await updateUserProfile({
+          username: current.username,
+          email: current.email,
+          firstName,
+          lastName,
+          desiredHomePrice: parseFloat(profileData.desiredHomePrice) || null,
+          creditScore: profileData.creditScore === 'No Credit' ? null : parseInt(profileData.creditScore) || null,
+          monthlyIncome: parseFloat(profileData.monthlyIncome) || null,
+          monthlyExpenses: parseFloat(profileData.monthlyExpenses) || null,
+          totalSavings: parseFloat(profileData.savingsTotal) || null,
+          targetZipCode: isValidZip(profileData.targetZipCode) ? profileData.targetZipCode : null,
+          industryOfWork: profileData.industry || null,
+        });
+      }
+    } catch {
+      // ignore failures while writing the profile server-side
+    }
+
     setProfile(profileData);
   };
 
@@ -178,11 +210,23 @@ export function OnboardingGate() {
                     </label>
                   </div>
 
-                  {formData.desiredHomePrice && parseInt(formData.desiredHomePrice) > 0 && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-6">
-                      <AffordabilityMap targetPrice={parseInt(formData.desiredHomePrice)} />
-                    </motion.div>
-                  )}
+                  <div>
+                    <label className="block text-white/90 mb-2">
+                      <MapPin className="inline w-4 h-4 mr-2" />
+                      Target ZIP Code
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      required
+                      value={formData.targetZipCode}
+                      onChange={(e) => setFormData({ ...formData, targetZipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
+                      className="w-full px-4 py-3 glass rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+                      placeholder="e.g., 84604"
+                    />
+                    <p className="text-white/50 text-xs mt-1.5">Used to search homes near your desired area</p>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -194,7 +238,7 @@ export function OnboardingGate() {
                 <p className="text-white/70 text-center mb-8">Help us understand your financial situation</p>
 
                 <div className="space-y-5">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-white/90 mb-2">
                         <DollarSign className="inline w-4 h-4 mr-2" />
@@ -225,7 +269,7 @@ export function OnboardingGate() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-white/90 mb-2">
                         <PiggyBank className="inline w-4 h-4 mr-2" />

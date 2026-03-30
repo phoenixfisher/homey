@@ -21,7 +21,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { getUserProfile, saveUserProfile, fetchSessionUser } from '@/lib/auth';
-import { fetchUserProfile, type UserProfile } from '@/lib/profile';
+import { fetchUserProfile } from '@/lib/profile';
 import {
   fetchDocumentChecklist,
   saveDocumentChecklist,
@@ -319,7 +319,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
         </div>
 
         {/* Save checklist to cloud */}
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1" aria-live="polite" aria-atomic="true">
           <button
             onClick={() => void handleSaveChecklist()}
             disabled={checklistSaveStatus === 'saving'}
@@ -356,7 +356,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
           animate={{ opacity: 1, y: 0 }}
           className="glass rounded-2xl overflow-hidden"
         >
-          <div className="flex items-center justify-between px-8 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-5">
             <div className="flex items-center gap-4">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0" style={{ backgroundColor: '#3e78b250' }}>
                 <DollarSign className="w-6 h-6" />
@@ -371,7 +371,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
               Download All Documents
             </button>
           </div>
-          <div className="px-8 pb-8 flex flex-col gap-5">
+          <div className="px-4 sm:px-8 pb-8 flex flex-col gap-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               <div className="flex flex-col gap-2">
                 <label className="text-white/90 text-base font-medium">Monthly Income</label>
@@ -436,7 +436,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
               {/* Header */}
               <button
                 onClick={() => setOpenSection(isOpen ? null : section.id)}
-                className="w-full flex items-center justify-between px-8 py-5 hover:bg-white/10 transition-all"
+                className="w-full flex items-center justify-between px-4 sm:px-8 py-5 hover:bg-white/10 transition-all"
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -468,7 +468,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-8 pb-8 flex flex-col gap-4">
+                    <div className="px-4 sm:px-8 pb-8 flex flex-col gap-4">
                       {section.note && (
                         <p className="text-white/60 text-base italic border-l-2 border-white/20 pl-4">
                           {section.note}
@@ -520,10 +520,11 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                                 </button>
                                 <button
                                   onClick={() => handleRemove(slot.id)}
+                                  aria-label={`Remove ${stored.name}`}
                                   className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/20 transition-all shrink-0"
                                   title="Remove"
                                 >
-                                  <X className="w-4 h-4" />
+                                  <X className="w-4 h-4" aria-hidden="true" />
                                 </button>
                               </div>
                             ) : (
@@ -576,7 +577,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
         </div>
         <button
           onClick={onNext}
-          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
+          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 active:bg-white/30 active:scale-95 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
           style={{ backgroundColor: '#3e78b260' }}
         >
           Next: Qualification
@@ -598,16 +599,20 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="download-confirm-title"
               className="glass rounded-3xl p-8 w-full max-w-lg flex flex-col gap-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">Download All Documents?</h2>
+                <h2 id="download-confirm-title" className="text-2xl font-bold text-white">Download All Documents?</h2>
                 <button
                   onClick={() => setShowDownloadConfirm(false)}
+                  aria-label="Close dialog"
                   className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/20 transition-all"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
 
@@ -669,13 +674,16 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass rounded-3xl p-4 w-full max-w-3xl max-h-[90vh] flex flex-col gap-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Preview: ${preview.name}`}
+              className="glass rounded-3xl p-4 w-full max-w-3xl flex flex-col gap-4" style={{ maxHeight: '90dvh' }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal header */}
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <File className="w-5 h-5 text-white/60 shrink-0" />
+                  <File className="w-5 h-5 text-white/60 shrink-0" aria-hidden="true" />
                   <p className="text-white font-semibold truncate">{preview.name}</p>
                   <p className="text-white/50 text-sm shrink-0">{formatBytes(preview.size)}</p>
                 </div>
@@ -684,20 +692,21 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                     onClick={() => handleDownload(preview)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-all text-sm"
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-4 h-4" aria-hidden="true" />
                     Download
                   </button>
                   <button
                     onClick={() => setPreview(null)}
+                    aria-label="Close preview"
                     className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/20 transition-all"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-5 h-5" aria-hidden="true" />
                   </button>
                 </div>
               </div>
 
               {/* Preview content */}
-              <div className="flex-1 overflow-auto rounded-2xl bg-black/20 min-h-0" style={{ maxHeight: '75vh' }}>
+              <div className="flex-1 overflow-auto rounded-2xl bg-black/20 min-h-0" style={{ maxHeight: '70dvh' }}>
                 {preview.dataUrl.startsWith('data:image/') ? (
                   <img
                     src={preview.dataUrl}
@@ -709,7 +718,7 @@ export function GatherDocumentsView({ onBack, onNext }: Props) {
                     src={preview.dataUrl}
                     title={preview.name}
                     className="w-full rounded-2xl"
-                    style={{ height: '70vh' }}
+                    style={{ height: '60dvh' }}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-48 gap-3">

@@ -105,6 +105,17 @@ export function QualificationView({ onBack, onNext }: Props) {
     })();
   }, []);
 
+  const monthlyIncome = parseFloat(profile.monthlyIncome ?? '0');
+  const monthlyExpenses = parseFloat(profile.monthlyExpenses ?? '0');
+  const savings = parseFloat(profile.savingsTotal ?? '0');
+  const desiredPrice = parseFloat(profile.desiredHomePrice ?? '0');
+  const creditScore = Number(profile.creditScore);
+  const safeCreditScore = Number.isFinite(creditScore) && creditScore > 0 ? creditScore : 0;
+
+  const dti = monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : null;
+  const downPaymentNeeded = desiredPrice * 0.2;
+  const downPaymentPercent = desiredPrice > 0 ? (savings / desiredPrice) * 100 : null;
+
   const handleSaveSnapshot = async () => {
     if (!isLoggedIn) {
       setShowLoginPrompt(true);
@@ -112,10 +123,10 @@ export function QualificationView({ onBack, onNext }: Props) {
     }
     setSaveStatus('saving');
     try {
-      const creditScore = parseInt(profile.creditScore ?? '0') || undefined;
+      const snapshotCreditScore = parseInt(profile.creditScore ?? '0') || undefined;
       await saveQualificationSnapshot({
         dti: dti ?? undefined,
-        creditScore: creditScore as number | undefined,
+        creditScore: snapshotCreditScore,
         monthlyIncome: monthlyIncome > 0 ? monthlyIncome : undefined,
         monthlyExpenses: monthlyExpenses > 0 ? monthlyExpenses : undefined,
         savings: savings > 0 ? savings : undefined,
@@ -123,7 +134,7 @@ export function QualificationView({ onBack, onNext }: Props) {
       });
       const snap: QualificationSnapshot = {
         dti: dti ?? undefined,
-        creditScore: creditScore,
+        creditScore: snapshotCreditScore,
         monthlyIncome: monthlyIncome > 0 ? monthlyIncome : undefined,
         monthlyExpenses: monthlyExpenses > 0 ? monthlyExpenses : undefined,
         savings: savings > 0 ? savings : undefined,
@@ -138,17 +149,6 @@ export function QualificationView({ onBack, onNext }: Props) {
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
   };
-
-  const monthlyIncome = parseFloat(profile.monthlyIncome ?? '0');
-  const monthlyExpenses = parseFloat(profile.monthlyExpenses ?? '0');
-  const savings = parseFloat(profile.savingsTotal ?? '0');
-  const desiredPrice = parseFloat(profile.desiredHomePrice ?? '0');
-  const creditScore = Number(profile.creditScore);
-  const safeCreditScore = Number.isFinite(creditScore) && creditScore > 0 ? creditScore : 0;
-
-  const dti = monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : null;
-  const downPaymentNeeded = desiredPrice * 0.2;
-  const downPaymentPercent = desiredPrice > 0 ? (savings / desiredPrice) * 100 : null;
 
   const getDTIColor = (d: number) => {
     if (d <= 36) return { color: '#bdc4a7', label: 'Excellent', desc: 'Well within lender limits' };
@@ -335,7 +335,7 @@ export function QualificationView({ onBack, onNext }: Props) {
             >
               <button
                 onClick={() => setOpenSection(isOpen ? null : step.title)}
-                className="w-full flex items-center justify-between px-8 py-5 hover:bg-white/10 transition-all"
+                className="w-full flex items-center justify-between px-4 sm:px-8 py-5 hover:bg-white/10 transition-all"
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -364,7 +364,7 @@ export function QualificationView({ onBack, onNext }: Props) {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-8 pt-2 pb-8 flex flex-col gap-4">
+                    <div className="px-4 sm:px-8 pt-2 pb-8 flex flex-col gap-4">
                       <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-1">
                           <p className="text-white/50 text-sm uppercase tracking-wider font-semibold">What they check</p>
@@ -435,7 +435,7 @@ export function QualificationView({ onBack, onNext }: Props) {
         </div>
         <button
           onClick={onNext}
-          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
+          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 active:bg-white/30 active:scale-95 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
           style={{ backgroundColor: '#3e78b260' }}
         >
           Next: Pre-Approval Letter

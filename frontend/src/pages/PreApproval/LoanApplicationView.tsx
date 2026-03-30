@@ -453,7 +453,7 @@ export function LoanApplicationView({ onBack, onNext }: Props) {
         </div>
 
         {/* Save to cloud button */}
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1" aria-live="polite" aria-atomic="true">
           <button
             onClick={() => void handleSaveToCloud()}
             disabled={saveStatus === 'saving'}
@@ -495,7 +495,7 @@ export function LoanApplicationView({ onBack, onNext }: Props) {
             >
               <button
                 onClick={() => setOpenSection(isOpen ? null : section.id)}
-                className="w-full flex items-center justify-between px-8 py-5 hover:bg-white/10 transition-all"
+                className="w-full flex items-center justify-between px-4 sm:px-8 py-5 hover:bg-white/10 transition-all"
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -521,7 +521,7 @@ export function LoanApplicationView({ onBack, onNext }: Props) {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-8 pb-8 flex flex-col gap-5">
+                    <div className="px-4 sm:px-8 pb-8 flex flex-col gap-5">
                       {section.note && (
                         <p className="text-white/60 text-base italic border-l-2 border-white/20 pl-4">
                           {section.note}
@@ -561,7 +561,7 @@ export function LoanApplicationView({ onBack, onNext }: Props) {
         </div>
         <button
           onClick={onNext}
-          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
+          className="flex items-center gap-3 px-6 py-4 rounded-2xl text-white font-semibold text-lg shrink-0 hover:bg-white/20 active:bg-white/30 active:scale-95 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(20,50,100,0.5)]"
           style={{ backgroundColor: '#3e78b260' }}
         >
           Next: Gather Documents
